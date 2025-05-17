@@ -1,0 +1,68 @@
+databaseChangeLog:
+  - changeSet:
+      id: 02-insert-initial-cars
+      author: Illia Pantazi
+      changes:
+        - insert:
+            tableName: cars
+            columns:
+              - column:
+                  name: model
+                  value: "Model S"
+              - column:
+                  name: brand
+                  value: "Tesla"
+              - column:
+                  name: type
+                  value: "SEDAN"
+              - column:
+                  name: inventory
+                  valueNumeric: "5"
+              - column:
+                  name: daily_fee
+                  valueNumeric: "150.00"
+              - column:
+                  name: is_deleted
+                  valueBoolean: "false"
+        - insert:
+            tableName: cars
+            columns:
+              - column:
+                  name: model
+                  value: "CR-V"
+              - column:
+                  name: brand
+                  value: "Honda"
+              - column:
+                  name: type
+                  value: "SUV"
+              - column:
+                  name: inventory
+                  valueNumeric: "3"
+              - column:
+                  name: daily_fee
+                  valueNumeric: "95.00"
+              - column:
+                  name: is_deleted
+                  valueBoolean: "false"
+        - insert:
+            tableName: cars
+            columns:
+              - column:
+                  name: model
+                  value: "Golf"
+              - column:
+                  name: brand
+                  value: "Volkswagen"
+              - column:
+                  name: type
+                  value: "HATCHBACK"
+              - column:
+                  name: inventory
+                  valueNumeric: "7"
+              - column:
+                  name: daily_fee
+                  valueNumeric: "70.00"
+              - column:
+                  name: is_deleted
+                  valueBoolean: "false"
