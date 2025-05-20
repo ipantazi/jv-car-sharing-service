@@ -21,7 +21,6 @@ public interface CarMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "deleted", ignore = true)
-    @Mapping(target = "type", ignore = true)
     @Mapping(target = "inventory", ignore = true)
     void updateCarEntity(UpdateCarDto updateCarDto, @MappingTarget Car car);
 

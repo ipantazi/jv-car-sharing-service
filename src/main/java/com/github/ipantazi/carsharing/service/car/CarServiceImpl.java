@@ -22,10 +22,7 @@ public class CarServiceImpl implements CarService {
 
     @Override
     public CarDto save(CarRequestDto carRequestDto) {
-        if (carRepository.existsByModelAndBrand(carRequestDto.model(), carRequestDto.brand())) {
-            throw new DataProcessingException("Car with this model: " + carRequestDto.model()
-                    + " and brand: " + carRequestDto.brand() + " already exists.");
-        }
+        validateCarDoesNotExist(carRequestDto.model(), carRequestDto.brand());
         Car car = carMapper.toCarEntity(carRequestDto);
         return carMapper.toCarDto(carRepository.save(car));
     }
@@ -38,6 +35,7 @@ public class CarServiceImpl implements CarService {
     @Override
     public CarDto update(Long id, UpdateCarDto updateCarDto) {
         Car car = findCarById(id);
+        validateCarDoesNotExist(updateCarDto.model(), updateCarDto.brand());
         carMapper.updateCarEntity(updateCarDto, car);
         return carMapper.toCarDto(carRepository.save(car));
     }
@@ -84,5 +82,17 @@ public class CarServiceImpl implements CarService {
     public Car findCarById(Long id) {
         return carRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Car not found with id: " + id));
+    }
+
+    private void validateCarDoesNotExist(String model, String brand) {
+        if (carRepository.existsByModelAndBrand(model, brand)) {
+            throw new DataProcessingException("Car with model: " + model + " and brand: " + brand
+                    + " already exists.");
+        }
+
+        if (carRepository.existsSoftDeletedByModelAndBrand(model, brand) == 1L) {
+            throw new DataProcessingException("Car with model: " + model + " and brand: " + brand
+                    + " already exists, but was previously deleted.");
+        }
     }
 }

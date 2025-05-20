@@ -40,3 +40,7 @@ databaseChangeLog:
                   name: is_deleted
                   type: bit
                   defaultValueBoolean: false
+        - addUniqueConstraint:
+            tableName: cars
+            columnNames: model, brand
+            constraintName: unique_model_brand

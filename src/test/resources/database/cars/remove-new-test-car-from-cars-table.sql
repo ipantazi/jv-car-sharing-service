@@ -1,0 +1,1 @@
+DELETE FROM cars WHERE model = 'Test Car 105' AND brand = 'Test Brand 105';

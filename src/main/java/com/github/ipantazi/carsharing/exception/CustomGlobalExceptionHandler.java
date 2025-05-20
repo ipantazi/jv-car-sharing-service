@@ -21,17 +21,6 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 @ControllerAdvice
 public class CustomGlobalExceptionHandler extends ResponseEntityExceptionHandler {
-    protected ResponseEntity<Object> handleHttpMessageNotReadable(
-            HttpMessageNotReadableException ex,
-            HttpHeaders headers,
-            HttpStatusCode status,
-            WebRequest request) {
-
-        String errorMessage = "Invalid request body";
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("error", errorMessage));
-    }
-
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<Object> handleEntityNotFoundException(EntityNotFoundException ex) {
         Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.NOT_FOUND);
@@ -53,14 +42,25 @@ public class CustomGlobalExceptionHandler extends ResponseEntityExceptionHandler
 
     @ExceptionHandler(DataProcessingException.class)
     public ResponseEntity<Object> handleDataProcessingException(DataProcessingException ex) {
-        Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-        return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
+        Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.CONFLICT);
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(PropertyReferenceException.class)
     public ResponseEntity<Object> handlePropertyReferenceException(PropertyReferenceException ex) {
         Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.BAD_REQUEST);
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(
+            @NonNull HttpMessageNotReadableException ex,
+            @NonNull HttpHeaders headers,
+            @NonNull HttpStatusCode status,
+            @NonNull WebRequest request) {
+
+        Map<String, Object> body = bodyBuilder("Invalid request body", HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(body, headers, status);
     }
 
     @Override

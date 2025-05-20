@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import lombok.Getter;
@@ -16,7 +17,10 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
 @Entity
-@Table(name = "cars")
+@Table(
+        name = "cars",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"model", "brand"})
+)
 @SQLDelete(sql = "UPDATE cars SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
 @Setter

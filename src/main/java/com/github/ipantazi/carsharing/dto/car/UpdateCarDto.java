@@ -29,10 +29,12 @@ public record UpdateCarDto(
                 message = "Invalid type. Type must be between 3 and 20 characters.")
         String type,
 
-        @NotNull(message = "Invalid dailyFee. DailyFee shouldn't be null.")
-        @Positive(message = "Invalid dailyFee. DailyFee should be positive.")
-        @Digits(integer = 10, fraction = 2,
-                message = "Invalid dailyFee. The maximum allowed number for a dailyFee is "
+        @NotNull(message = "Invalid daily fee. Daily fee shouldn't be null.")
+        @Positive(message = "Invalid daily fee. Daily fee should be positive.")
+        @Digits(
+                integer = 10,
+                fraction = 2,
+                message = "Invalid daily fee. The maximum allowed number for a daily fee is "
                         + "10 digits and 2 digits after the decimal point.")
         BigDecimal dailyFee) {
 }
