@@ -1,0 +1,46 @@
+databaseChangeLog:
+  - changeSet:
+      id: 01-create-cars-table
+      author: Illia Pantazi
+      changes:
+        - createTable:
+            tableName: cars
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: brand
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(20)
+                  constraints:
+                      nullable: false
+              - column:
+                  name: inventory
+                  type: int
+              - column:
+                  name: daily_fee
+                  type: decimal(10, 2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_deleted
+                  type: bit
+                  defaultValueBoolean: false
+        - addUniqueConstraint:
+            tableName: cars
+            columnNames: model, brand
+            constraintName: unique_model_brand
