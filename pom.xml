@@ -66,31 +66,31 @@
             <artifactId>spring-boot-starter-logging</artifactId>
             <scope>runtime</scope>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.springframework.boot</groupId>-->
-<!--            <artifactId>spring-boot-starter-security</artifactId>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>io.jsonwebtoken</groupId>-->
-<!--            <artifactId>jjwt</artifactId>-->
-<!--            <version>${jjwt.version}</version>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>io.jsonwebtoken</groupId>-->
-<!--            <artifactId>jjwt-impl</artifactId>-->
-<!--            <version>${jjwt.version}</version>-->
-<!--            <scope>runtime</scope>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>io.jsonwebtoken</groupId>-->
-<!--            <artifactId>jjwt-jackson</artifactId>-->
-<!--            <version>${jjwt.version}</version>-->
-<!--            <scope>runtime</scope>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
         <dependency>
             <groupId>org.liquibase</groupId>
             <artifactId>liquibase-core</artifactId>
@@ -120,11 +120,11 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.springframework.security</groupId>-->
-<!--            <artifactId>spring-security-test</artifactId>-->
-<!--            <scope>test</scope>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
@@ -137,7 +137,6 @@
             <version>${webmvc-ui.version}</version>
         </dependency>
     </dependencies>
-
     <build>
         <plugins>
             <plugin>
@@ -216,5 +215,4 @@
             </plugin>
         </plugins>
     </build>
-
 </project>
