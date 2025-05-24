@@ -1,15 +1,15 @@
 package com.github.ipantazi.carsharing.dto.user;
 
-//import com.github.ipantazi.carsharing.validation.FieldMatch;
+import com.github.ipantazi.carsharing.validation.FieldMatch;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-/*@FieldMatch(field = "password",
+@FieldMatch(field = "password",
         fieldMatch = "repeatPassword",
         message = "The passwords do not match."
-)*/
+)
 public record UserRegistrationRequestDto(
         @Email(message = "Invalid format email.")
         @Size(max = 50, message = "Email address must not exceed 50 characters.")
