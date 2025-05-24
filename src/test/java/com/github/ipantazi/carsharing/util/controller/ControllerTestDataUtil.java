@@ -10,6 +10,7 @@ public class ControllerTestDataUtil extends TestDataUtil {
     public static final int NOT_FOUND = HttpStatus.NOT_FOUND.value();
     public static final int UNPROCESSABLE_ENTITY = HttpStatus.UNPROCESSABLE_ENTITY.value();
     public static final int UNAUTHORIZED = HttpStatus.UNAUTHORIZED.value();
+    public static final int FORBIDDEN = HttpStatus.FORBIDDEN.value();
     public static final int CONFLICT = HttpStatus.CONFLICT.value();
 
     public static final String URL_CARS = "/cars";
@@ -51,6 +52,35 @@ public class ControllerTestDataUtil extends TestDataUtil {
     public static final List<String> EXPECTED_UPDATE_INVENTORY_CAR_ERRORS = List.of(
             "Field 'inventory': Invalid inventory. Inventory should be positive.",
             "Field 'operation': Invalid operation. Operation shouldn't be null."
+    );
+    public static final List<String> EXPECTED_USER_LOGIN_BLANK_ERRORS = List.of(
+            "Field 'email': Invalid email. Email shouldn't be blank.",
+            "Field 'password': Invalid password. Password shouldn't be blank.",
+            "Field 'password': Invalid password. The password should be between 8 to 50."
+    );
+    public static final List<String> EXPECTED_USER_LOGIN_ERRORS = List.of(
+            "Field 'email': Invalid format email.",
+            "Field 'email': Email address should be exceed 50 characters.",
+            "Field 'password': Invalid password. The password should be between 8 to 50."
+    );
+    public static final List<String> EXPECTED_USER_REGISTRATION_SIZE_ERRORS = List.of(
+            "Field 'email': Invalid format email.",
+            "Field 'email': Email address must not exceed 50 characters.",
+            "Field 'password': Invalid password. Password shouldn't be blank.",
+            "Field 'password': Invalid password. The password should be between 8 to 50.",
+            "Field 'password': Password must include at least one lowercase letter, "
+                    + "one uppercase letter, one number, and one special character.",
+            "Field 'firstName': Invalid first name. First name shouldn't be blank.",
+            "Field 'firstName': Invalid first name. First name should be between 3 to 50.",
+            "Field 'lastName': Invalid last name. Last name shouldn't be blank.",
+            "Field 'lastName': Invalid last name. Last name should be between 3 to 50."
+    );
+    public static final List<String> EXPECTED_USER_REGISTRATION_FORMAT_ERRORS = List.of(
+            "Field 'email': Invalid format email.",
+            "Field 'password': Password must include at least one lowercase letter, "
+                    + "one uppercase letter, one number, and one special character.",
+            "Field 'firstName': First name must contain only letters.",
+            "Field 'lastName': Last name must be contain only letters."
     );
 
     private ControllerTestDataUtil() {
