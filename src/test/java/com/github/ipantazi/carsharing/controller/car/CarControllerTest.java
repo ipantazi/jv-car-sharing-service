@@ -35,8 +35,10 @@ import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataU
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.EXPECTED_UPDATE_CAR_ERRORS;
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.EXPECTED_UPDATE_CAR_NULL_ERRORS;
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.EXPECTED_UPDATE_INVENTORY_CAR_ERRORS;
+import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.FORBIDDEN;
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.NOT_FOUND;
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.NO_CONTENT;
+import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.UNAUTHORIZED;
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.URL_CARS;
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.URL_CARS_EXISTING_CAR_ID;
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.URL_CARS_NOT_EXISTING_CAR_ID;
@@ -72,6 +74,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -82,7 +85,7 @@ public class CarControllerTest {
     protected static MockMvc mockMvc;
 
     @Autowired
-private ObjectMapper objectMapper;
+    private ObjectMapper objectMapper;
 
     @BeforeAll
     static void beforeAll(@Autowired DataSource dataSource,
@@ -102,6 +105,7 @@ private ObjectMapper objectMapper;
         executeSqlScript(dataSource, "database/cars/clear-all-cars.sql");
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Test createCar with valid request")
     @Sql(
@@ -128,6 +132,46 @@ private ObjectMapper objectMapper;
     }
 
     @Test
+    @DisplayName("Should return Unauthorized when unauthorized user tries to create a car")
+    void createCar_UnauthorizedUser_ShouldReturnUnauthorized() throws Exception {
+        // Given
+        CarRequestDto carRequestDto = createTestCarRequestDto(createTestCarDto(NEW_CAR_ID));
+        String jsonRequest = objectMapper.writeValueAsString(carRequestDto);
+
+        // When
+        MvcResult result = createJsonMvcResult(
+                mockMvc,
+                post(URL_CARS),
+                status().isUnauthorized(),
+                jsonRequest
+        );
+
+        // Then
+        assertThat(result.getResponse().getStatus()).isEqualTo(UNAUTHORIZED);
+    }
+
+    @WithMockUser(username = "alice@example.com")
+    @Test
+    @DisplayName("Should return Forbidden when non-MANAGER tries to create a car")
+    void createCar_NonManager_ShouldReturnForbidden() throws Exception {
+        // Given
+        CarRequestDto carRequestDto = createTestCarRequestDto(createTestCarDto(NEW_CAR_ID));
+        String jsonRequest = objectMapper.writeValueAsString(carRequestDto);
+
+        // When
+        MvcResult result = createJsonMvcResult(
+                mockMvc,
+                post(URL_CARS),
+                status().isForbidden(),
+                jsonRequest
+        );
+
+        // Then
+        assertThat(result.getResponse().getStatus()).isEqualTo(FORBIDDEN);
+    }
+
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
+    @Test
     @DisplayName("Verify that an exception is thrown when a new car is already present")
     void createCar_CarAlreadyPresent_ShouldReturnConflict() throws Exception {
         // Given
@@ -152,6 +196,7 @@ private ObjectMapper objectMapper;
         );
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Verify that an exception is thrown when a new car is already present "
             + "but soft deleted")
@@ -179,6 +224,7 @@ private ObjectMapper objectMapper;
         );
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Verify that an exception is thrown when car fields are not in valid format")
     void createCar_InvalidFormatCarFields_ShouldReturnBadRequest() throws Exception {
@@ -198,6 +244,7 @@ private ObjectMapper objectMapper;
         assertValidationErrorList(result, objectMapper, EXPECTED_SAVE_CAR_ERRORS);
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Verify that an exception is thrown when a car fields are null")
     void createCar_NullCarFields_ShouldReturnBadRequest() throws Exception {
@@ -223,6 +270,7 @@ private ObjectMapper objectMapper;
         assertValidationErrorList(result, objectMapper, EXPECTED_SAVE_CAR_NULL_ERRORS);
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Verify that an exception is thrown when a type is not valid")
     void createCar_InvalidType_ShouldReturnBadRequest() throws Exception {
@@ -373,6 +421,7 @@ private ObjectMapper objectMapper;
         );
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Test safe delete car by id")
     @Sql(
@@ -398,6 +447,36 @@ private ObjectMapper objectMapper;
     }
 
     @Test
+    @DisplayName("Should return Unauthorized when unauthorized user tries to delete a car")
+    void deleteCar_UnauthorizedUser_ShouldReturnUnauthorized() throws Exception {
+        // When
+        MvcResult result = createMvcResult(
+                mockMvc,
+                delete(URL_CARS_EXISTING_CAR_ID),
+                status().isUnauthorized()
+        );
+
+        // Then
+        assertThat(result.getResponse().getStatus()).isEqualTo(UNAUTHORIZED);
+    }
+
+    @WithMockUser(username = "alice@example.com")
+    @Test
+    @DisplayName("Should return Forbidden when non-MANAGER tries to delete a car")
+    void deleteCar_NonManager_ShouldReturnForbidden() throws Exception {
+        // When
+        MvcResult result = createMvcResult(
+                mockMvc,
+                delete(URL_CARS_EXISTING_CAR_ID),
+                status().isForbidden()
+        );
+
+        // Then
+        assertThat(result.getResponse().getStatus()).isEqualTo(FORBIDDEN);
+    }
+
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
+    @Test
     @DisplayName("Test safe delete car by id with invalid id")
     void deleteCar_InvalidId_ShouldReturnNotFound() throws Exception {
         // When
@@ -416,6 +495,7 @@ private ObjectMapper objectMapper;
         );
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Test update car by id")
     @Sql(
@@ -442,6 +522,46 @@ private ObjectMapper objectMapper;
     }
 
     @Test
+    @DisplayName("Should return Unauthorized when unauthorized user tries to update a car")
+    void updateCar_UnauthorizedUser_ShouldReturnUnauthorized() throws Exception {
+        // Given
+        UpdateCarDto updateCarDto = createTestUpdateCarDto(createTestCarDto(EXISTING_CAR_ID));
+        String jsonRequest = objectMapper.writeValueAsString(updateCarDto);
+
+        // When
+        MvcResult result = createJsonMvcResult(
+                mockMvc,
+                put(URL_CARS_EXISTING_CAR_ID),
+                status().isUnauthorized(),
+                jsonRequest
+        );
+
+        // Then
+        assertThat(result.getResponse().getStatus()).isEqualTo(UNAUTHORIZED);
+    }
+
+    @WithMockUser(username = "alice@example.com")
+    @Test
+    @DisplayName("Should return Forbidden when non-MANAGER tries to update a car")
+    void updateCar_NonManager_ShouldReturnForbidden() throws Exception {
+        // Given
+        UpdateCarDto updateCarDto = createTestUpdateCarDto(createTestCarDto(EXISTING_CAR_ID));
+        String jsonRequest = objectMapper.writeValueAsString(updateCarDto);
+
+        // When
+        MvcResult result = createJsonMvcResult(
+                mockMvc,
+                put(URL_CARS_EXISTING_CAR_ID),
+                status().isForbidden(),
+                jsonRequest
+        );
+
+        // Then
+        assertThat(result.getResponse().getStatus()).isEqualTo(FORBIDDEN);
+    }
+
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
+    @Test
     @DisplayName("Test update car by id with invalid id")
     void updateCar_InvalidId_ShouldReturnNotFound() throws Exception {
         // Given
@@ -465,6 +585,7 @@ private ObjectMapper objectMapper;
         );
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Test update car by id with an existing car with the given model and brand ")
     void updateCar_ExistingCarWithSameModelAndBrand_ShouldReturnConflict() throws Exception {
@@ -490,6 +611,7 @@ private ObjectMapper objectMapper;
         );
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName(
             "Test update car with an existing soft deleted car with the given model and brand"
@@ -519,6 +641,7 @@ private ObjectMapper objectMapper;
         );
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Test update car by id with invalid car fields")
     void updateCar_InvalidCarFields_ShouldReturnBadRequest() throws Exception {
@@ -538,6 +661,7 @@ private ObjectMapper objectMapper;
         assertValidationErrorList(result, objectMapper, EXPECTED_UPDATE_CAR_ERRORS);
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Test update car by id with null car fields")
     void updateCar_NullCarFields_ShouldReturnBadRequest() throws Exception {
@@ -562,6 +686,7 @@ private ObjectMapper objectMapper;
         assertValidationErrorList(result, objectMapper, EXPECTED_UPDATE_CAR_NULL_ERRORS);
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Test update car by id with invalid type")
     void updateCar_InvalidType_ShouldReturnBadRequest() throws Exception {
@@ -592,6 +717,7 @@ private ObjectMapper objectMapper;
         );
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Test update inventory by id with operation type SET")
     @Sql(
@@ -620,6 +746,7 @@ private ObjectMapper objectMapper;
         assertThat(actualCarDto.getInventory()).isEqualTo(newInventory);
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Test update inventory by id with operation type INCREASE")
     @Sql(
@@ -648,6 +775,7 @@ private ObjectMapper objectMapper;
         assertThat(actualCarDto.getInventory()).isEqualTo(CAR_INVENTORY + newInventory);
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Test update inventory by id with operation type DECREASE")
     @Sql(
@@ -676,6 +804,52 @@ private ObjectMapper objectMapper;
         assertThat(actualCarDto.getInventory()).isEqualTo(CAR_INVENTORY - newInventory);
     }
 
+    @Test
+    @DisplayName("Should return Unauthorized when unauthorized user tries to update inventory")
+    void updateInventory_UnauthorizedUser_ShouldReturnUnauthorized() throws Exception {
+        // Given
+        InventoryRequestDto inventoryRequestDto = createTestInventoryRequestDto(
+                CAR_INVENTORY,
+                OperationType.SET
+        );
+        String jsonRequest = objectMapper.writeValueAsString(inventoryRequestDto);
+
+        // When
+        MvcResult result = createJsonMvcResult(
+                mockMvc,
+                patch(URL_CARS_EXISTING_CAR_ID),
+                status().isUnauthorized(),
+                jsonRequest
+        );
+
+        // Then
+        assertThat(result.getResponse().getStatus()).isEqualTo(UNAUTHORIZED);
+    }
+
+    @WithMockUser(username = "alice@example.com")
+    @Test
+    @DisplayName("Should return Forbidden when non-MANAGER tries to update inventory")
+    void updateInventory_NonManager_ShouldReturnForbidden() throws Exception {
+        // Given
+        InventoryRequestDto inventoryRequestDto = createTestInventoryRequestDto(
+                CAR_INVENTORY,
+                OperationType.SET
+        );
+        String jsonRequest = objectMapper.writeValueAsString(inventoryRequestDto);
+
+        // When
+        MvcResult result = createJsonMvcResult(
+                mockMvc,
+                patch(URL_CARS_EXISTING_CAR_ID),
+                status().isForbidden(),
+                jsonRequest
+        );
+
+        // Then
+        assertThat(result.getResponse().getStatus()).isEqualTo(FORBIDDEN);
+    }
+
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Test update inventory by id with operation type DECREASE "
             + "and not enough inventory")
@@ -706,6 +880,7 @@ private ObjectMapper objectMapper;
         );
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Test update inventory by id with invalid operation type")
     void updateInventory_InvalidOperationType_ShouldReturnBadRequest() throws Exception {
@@ -733,6 +908,7 @@ private ObjectMapper objectMapper;
         );
     }
 
+    @WithMockUser(username = "bob@example.com", roles = {"MANAGER"})
     @Test
     @DisplayName("Test update inventory by id with invalid fields")
     void updateInventory_InvalidFields_ShouldReturnBadRequest() throws Exception {

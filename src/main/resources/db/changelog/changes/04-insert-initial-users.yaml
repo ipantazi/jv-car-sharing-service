@@ -1,0 +1,59 @@
+databaseChangeLog:
+  - changeSet:
+      id: 04-insert-users-initial-users
+      author: Illia Pantazi
+      changes:
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: email
+                  value: "bob@example.com"
+              - column:
+                  name: first_name
+                  value: "Bob"
+              - column:
+                  name: last_name
+                  value: "Montague"
+              - column:
+                    name: role
+                    value: "MANAGER"
+              - column:
+                  name: password
+                  value: "$2a$10$xcgKeq0jOubsDl9GXNLt1.pqpzPUhSo3M6BvgtjHrsab0mlvzxBfi"
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: email
+                  value: "alice@example.com"
+              - column:
+                  name: first_name
+                  value: "Alice"
+              - column:
+                  name: last_name
+                  value: "Capuleti"
+              - column:
+                    name: role
+                    value: "CUSTOMER"
+              - column:
+                  name: password
+                  value: "$2a$10$NOTN0yXvMymQWe0xvtmNGOwK/74WXnQevO4L9brRr6gPeEpQAe/sS"
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: email
+                  value: "john@example.com"
+              - column:
+                  name: first_name
+                  value: "John"
+              - column:
+                  name: last_name
+                  value: "Macbeth"
+              - column:
+                  name: role
+                  value: "CUSTOMER"
+              - column:
+                  name: password
+                  value: "$2a$10$jA8NX6H1tdL24vu10zQntOIe2SdCCTQr40G5GAK27z.qEDI3Ds5vS"

@@ -5,7 +5,11 @@ import com.github.ipantazi.carsharing.dto.car.CarRequestDto;
 import com.github.ipantazi.carsharing.dto.car.InventoryRequestDto;
 import com.github.ipantazi.carsharing.dto.car.UpdateCarDto;
 import com.github.ipantazi.carsharing.dto.enums.OperationType;
+import com.github.ipantazi.carsharing.dto.user.UserLoginRequestDto;
+import com.github.ipantazi.carsharing.dto.user.UserRegistrationRequestDto;
+import com.github.ipantazi.carsharing.dto.user.UserRegistrationResponseDto;
 import com.github.ipantazi.carsharing.model.Car;
+import com.github.ipantazi.carsharing.model.User;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
@@ -22,6 +26,10 @@ public class TestDataUtil {
     public static final Long SAFE_DELETED_CAR_ID = 104L;
     public static final Long NEW_CAR_ID = 105L;
     public static final Long NOT_EXISTING_CAR_ID = 999L;
+    public static final Long EXISTING_USER_ID = 101L;
+    public static final Long ALTERNATIVE_USER_ID = 102L;
+    public static final Long NEW_USER_ID = 103L;
+    public static final Long NOT_EXISTING_USER_ID = 999L;
 
     public static final String CAR_MODEL = "Test Car ";
     public static final String CAR_BRAND = "Test Brand ";
@@ -42,7 +50,6 @@ public class TestDataUtil {
             TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST
             TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST
             """;
-
     public static final String INVALID_CAR_MODEL = TEST_LONG_DATA;
     public static final String INVALID_CAR_BRAND = "T";
     public static final String INVALID_CAR_TYPE = "E";
@@ -50,8 +57,16 @@ public class TestDataUtil {
     public static final int INVALID_CAR_INVENTORY = -1;
     public static final BigDecimal INVALID_CAR_DAILY_FEE = new BigDecimal("999.999");
 
+    public static final String EMAIL_DOMAIN = "@example.com";
+    public static final String PASSWORD = "Test&password1";
+    public static final String B_CRYPT_PASSWORD = "$2a$10$TYVQIW25Boqejv0QvAYYn.6nQHmiypul1BkRgww"
+            + "1wPxSuLYBUg0f.";
+    public static final String FIRST_NAME = "FirstName";
+    public static final String LAST_NAME = "LastName";
+
     public static final String CAR_DTO_IGNORING_ID = "id";
     public static final String[] CAR_DTO_IGNORING_FIELDS = new String[] {"id", "dailyFee"};
+    public static final String USER_DTO_IGNORING_FIELD = "id";
 
     public static final Pageable CAR_PAGEABLE = PageRequest.of(
             0,
@@ -144,5 +159,62 @@ public class TestDataUtil {
         return LongStream.range(startId, startId + size)
                 .mapToObj(TestDataUtil::createTestCarDto)
                 .toList();
+    }
+
+    public static UserRegistrationResponseDto createTestUserRegistrationResponseDto(Long id) {
+        return new UserRegistrationResponseDto(
+                id,
+                id + EMAIL_DOMAIN,
+                FIRST_NAME,
+                LAST_NAME
+        );
+    }
+
+    public static User createTestUser(UserRegistrationResponseDto userDto) {
+        User user = new User();
+        user.setId(userDto.id());
+        user.setEmail(userDto.email());
+        user.setFirstName(userDto.firstName());
+        user.setLastName(userDto.lastName());
+        user.setPassword(B_CRYPT_PASSWORD);
+        return user;
+    }
+
+    public static User createTestUser(Long id) {
+        User user = new User();
+        user.setId(id);
+        user.setEmail(id + EMAIL_DOMAIN);
+        user.setFirstName(FIRST_NAME);
+        user.setLastName(LAST_NAME);
+        user.setPassword(B_CRYPT_PASSWORD);
+        return user;
+    }
+
+    public static UserRegistrationRequestDto createTestUserRegistrationRequestDto(
+            UserRegistrationResponseDto userDto) {
+        return new UserRegistrationRequestDto(
+                userDto.email(),
+                PASSWORD,
+                PASSWORD,
+                userDto.firstName(),
+                userDto.lastName()
+        );
+    }
+
+    public static UserRegistrationRequestDto createTestUserRegistrationRequestDto(Long id) {
+        return new UserRegistrationRequestDto(
+                id + EMAIL_DOMAIN,
+                PASSWORD,
+                PASSWORD,
+                FIRST_NAME,
+                LAST_NAME
+        );
+    }
+
+    public static UserLoginRequestDto createTestUserLoginRequestDto(Long id) {
+        return new UserLoginRequestDto(
+                id + EMAIL_DOMAIN,
+                PASSWORD
+        );
     }
 }

@@ -13,6 +13,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CarController {
     private final CarService carService;
 
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
     @Operation(summary = "Create a new car.", description = "Add a new car.")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -50,12 +52,14 @@ public class CarController {
         return carService.getById(id);
     }
 
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
     @Operation(summary = "Update a car", description = "Update a car by id.")
     @PutMapping("/{id}")
     public CarDto updateCar(@PathVariable Long id, @RequestBody @Valid UpdateCarDto carRequestDto) {
         return carService.update(id, carRequestDto);
     }
 
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
     @Operation(summary = "Update car inventory", description = "Update car inventory by car id.")
     @PatchMapping("/{id}")
     public CarDto updateInventory(@PathVariable Long id,
@@ -63,6 +67,7 @@ public class CarController {
         return carService.manageInventory(id, requestDto);
     }
 
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
     @Operation(summary = "Delete a car", description = "Delete a car by id.")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
