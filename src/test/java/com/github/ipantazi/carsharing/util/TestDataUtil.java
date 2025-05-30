@@ -5,9 +5,11 @@ import com.github.ipantazi.carsharing.dto.car.CarRequestDto;
 import com.github.ipantazi.carsharing.dto.car.InventoryRequestDto;
 import com.github.ipantazi.carsharing.dto.car.UpdateCarDto;
 import com.github.ipantazi.carsharing.dto.enums.OperationType;
+//import com.github.ipantazi.carsharing.dto.user.UserChangePasswordDto;
 import com.github.ipantazi.carsharing.dto.user.UserLoginRequestDto;
+//import com.github.ipantazi.carsharing.dto.user.UserProfileUpdateDto;
 import com.github.ipantazi.carsharing.dto.user.UserRegistrationRequestDto;
-import com.github.ipantazi.carsharing.dto.user.UserRegistrationResponseDto;
+import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
 import com.github.ipantazi.carsharing.model.Car;
 import com.github.ipantazi.carsharing.model.User;
 import java.math.BigDecimal;
@@ -27,7 +29,7 @@ public class TestDataUtil {
     public static final Long NEW_CAR_ID = 105L;
     public static final Long NOT_EXISTING_CAR_ID = 999L;
     public static final Long EXISTING_USER_ID = 101L;
-    public static final Long ALTERNATIVE_USER_ID = 102L;
+    public static final Long EXISTING_ID_ANOTHER_USER = 102L;
     public static final Long NEW_USER_ID = 103L;
     public static final Long NOT_EXISTING_USER_ID = 999L;
 
@@ -58,7 +60,10 @@ public class TestDataUtil {
     public static final BigDecimal INVALID_CAR_DAILY_FEE = new BigDecimal("999.999");
 
     public static final String EMAIL_DOMAIN = "@example.com";
-    public static final String PASSWORD = "Test&password1";
+    public static final String NEW_EMAIL = NEW_USER_ID + EMAIL_DOMAIN;
+    public static final String NOT_HASHED_PASSWORD = "Test&password1";
+    public static final String NOT_EXISTING_NOT_HASHED_PASSWORD = "Not&existingPassword1";
+    public static final String NEW_NOT_HASHED_PASSWORD = "New&password1";
     public static final String B_CRYPT_PASSWORD = "$2a$10$TYVQIW25Boqejv0QvAYYn.6nQHmiypul1BkRgww"
             + "1wPxSuLYBUg0f.";
     public static final String FIRST_NAME = "FirstName";
@@ -161,22 +166,34 @@ public class TestDataUtil {
                 .toList();
     }
 
-    public static UserRegistrationResponseDto createTestUserRegistrationResponseDto(Long id) {
-        return new UserRegistrationResponseDto(
+    public static UserResponseDto createTestUserResponseDto(Long id) {
+        return new UserResponseDto(
                 id,
                 id + EMAIL_DOMAIN,
                 FIRST_NAME,
-                LAST_NAME
+                LAST_NAME,
+                User.Role.CUSTOMER.toString()
         );
     }
 
-    public static User createTestUser(UserRegistrationResponseDto userDto) {
+    /*public static UserResponseDto createTestUserResponseDto(Long id, User.Role role) {
+        return new UserResponseDto(
+                id,
+                id + EMAIL_DOMAIN,
+                FIRST_NAME,
+                LAST_NAME,
+                role.toString()
+        );
+    }*/
+
+    public static User createTestUser(UserResponseDto userDto) {
         User user = new User();
         user.setId(userDto.id());
         user.setEmail(userDto.email());
         user.setFirstName(userDto.firstName());
         user.setLastName(userDto.lastName());
         user.setPassword(B_CRYPT_PASSWORD);
+        user.setRole(User.Role.valueOf(userDto.role()));
         return user;
     }
 
@@ -191,11 +208,11 @@ public class TestDataUtil {
     }
 
     public static UserRegistrationRequestDto createTestUserRegistrationRequestDto(
-            UserRegistrationResponseDto userDto) {
+            UserResponseDto userDto) {
         return new UserRegistrationRequestDto(
                 userDto.email(),
-                PASSWORD,
-                PASSWORD,
+                NOT_HASHED_PASSWORD,
+                NOT_HASHED_PASSWORD,
                 userDto.firstName(),
                 userDto.lastName()
         );
@@ -204,8 +221,8 @@ public class TestDataUtil {
     public static UserRegistrationRequestDto createTestUserRegistrationRequestDto(Long id) {
         return new UserRegistrationRequestDto(
                 id + EMAIL_DOMAIN,
-                PASSWORD,
-                PASSWORD,
+                NOT_HASHED_PASSWORD,
+                NOT_HASHED_PASSWORD,
                 FIRST_NAME,
                 LAST_NAME
         );
@@ -214,7 +231,31 @@ public class TestDataUtil {
     public static UserLoginRequestDto createTestUserLoginRequestDto(Long id) {
         return new UserLoginRequestDto(
                 id + EMAIL_DOMAIN,
-                PASSWORD
+                NOT_HASHED_PASSWORD
         );
     }
+
+    /*public static UserProfileUpdateDto createTestUpdateUserDto(UserResponseDto userDto) {
+        return new UserProfileUpdateDto(
+                userDto.email(),
+                userDto.firstName(),
+                userDto.lastName()
+        );
+    }
+
+    public static UserProfileUpdateDto createTestUpdateUserDto(Long id) {
+        return new UserProfileUpdateDto(
+                id + EMAIL_DOMAIN,
+                FIRST_NAME,
+                LAST_NAME
+        );
+    }
+
+    public static UserChangePasswordDto createTestChangePasswordRequestDto() {
+        return new UserChangePasswordDto(
+                NOT_HASHED_PASSWORD,
+                NEW_NOT_HASHED_PASSWORD,
+                NEW_NOT_HASHED_PASSWORD
+        );
+    }*/
 }
