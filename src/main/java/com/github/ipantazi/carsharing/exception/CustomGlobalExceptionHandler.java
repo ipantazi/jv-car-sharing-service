@@ -76,6 +76,20 @@ public class CustomGlobalExceptionHandler extends ResponseEntityExceptionHandler
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(InvalidOldPasswordException.class)
+    public ResponseEntity<Object> handleInvalidOldPasswordException(
+            InvalidOldPasswordException ex) {
+        Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(EmailAlreadyInUseException.class)
+    public ResponseEntity<Object> handleEmailAlreadyInUseException(
+            EmailAlreadyInUseException ex) {
+        Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.CONFLICT);
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+    }
+
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
             @NonNull HttpMessageNotReadableException ex,
