@@ -21,8 +21,8 @@ public class ControllerTestDataUtil extends TestDataUtil {
     public static final String URL_LOGIN = "/auth/login";
     public static final String URL_REGISTRATION = "/auth/registration";
 
-    /*public static final String URL_USER_ROLE = "/users/{id}/role";
-    public static final String URL_USER_ME = "/users/me";*/
+    public static final String URL_USER_ROLE = "/users/{id}/role";
+    public static final String URL_USER_ME = "/users/me";
 
     public static final List<String> EXPECTED_SAVE_CAR_ERRORS = List.of(
             "Field 'brand': Invalid brand. Brand must be between 3 and 50 characters.",
@@ -85,7 +85,7 @@ public class ControllerTestDataUtil extends TestDataUtil {
             "Field 'firstName': First name must contain only letters.",
             "Field 'lastName': Last name must be contain only letters."
     );
-    /*public static final List<String> EXPECTED_UPDATE_PROFILE_NULL_ERRORS = List.of(
+    public static final List<String> EXPECTED_UPDATE_PROFILE_NULL_ERRORS = List.of(
             "Field 'email': Invalid email. Email shouldn't be blank.",
             "Field 'firstName': Invalid first name. First name shouldn't be blank.",
             "Field 'lastName': Invalid last name. Last name shouldn't be blank."
@@ -107,7 +107,7 @@ public class ControllerTestDataUtil extends TestDataUtil {
                     + "50 characters.",
             "Field 'newPassword': Password must include at least one lowercase letter, "
                     + "one uppercase letter, one number, and one special character."
-    );*/
+    );
 
     private ControllerTestDataUtil() {
     }

@@ -5,9 +5,9 @@ import com.github.ipantazi.carsharing.dto.car.CarRequestDto;
 import com.github.ipantazi.carsharing.dto.car.InventoryRequestDto;
 import com.github.ipantazi.carsharing.dto.car.UpdateCarDto;
 import com.github.ipantazi.carsharing.dto.enums.OperationType;
-//import com.github.ipantazi.carsharing.dto.user.UserChangePasswordDto;
+import com.github.ipantazi.carsharing.dto.user.UserChangePasswordDto;
 import com.github.ipantazi.carsharing.dto.user.UserLoginRequestDto;
-//import com.github.ipantazi.carsharing.dto.user.UserProfileUpdateDto;
+import com.github.ipantazi.carsharing.dto.user.UserProfileUpdateDto;
 import com.github.ipantazi.carsharing.dto.user.UserRegistrationRequestDto;
 import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
 import com.github.ipantazi.carsharing.model.Car;
@@ -176,7 +176,7 @@ public class TestDataUtil {
         );
     }
 
-    /*public static UserResponseDto createTestUserResponseDto(Long id, User.Role role) {
+    public static UserResponseDto createTestUserResponseDto(Long id, User.Role role) {
         return new UserResponseDto(
                 id,
                 id + EMAIL_DOMAIN,
@@ -184,7 +184,7 @@ public class TestDataUtil {
                 LAST_NAME,
                 role.toString()
         );
-    }*/
+    }
 
     public static User createTestUser(UserResponseDto userDto) {
         User user = new User();
@@ -235,7 +235,7 @@ public class TestDataUtil {
         );
     }
 
-    /*public static UserProfileUpdateDto createTestUpdateUserDto(UserResponseDto userDto) {
+    public static UserProfileUpdateDto createTestUpdateUserDto(UserResponseDto userDto) {
         return new UserProfileUpdateDto(
                 userDto.email(),
                 userDto.firstName(),
@@ -257,5 +257,5 @@ public class TestDataUtil {
                 NEW_NOT_HASHED_PASSWORD,
                 NEW_NOT_HASHED_PASSWORD
         );
-    }*/
+    }
 }

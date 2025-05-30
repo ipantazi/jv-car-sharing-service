@@ -1,19 +1,19 @@
 package com.github.ipantazi.carsharing.service.user;
 
-//import static com.github.ipantazi.carsharing.util.TestDataUtil.B_CRYPT_PASSWORD;
-//import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_ID_ANOTHER_USER;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.B_CRYPT_PASSWORD;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_ID_ANOTHER_USER;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_USER_ID;
-/*import static com.github.ipantazi.carsharing.util.TestDataUtil.FIRST_NAME;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.FIRST_NAME;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.LAST_NAME;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_EMAIL;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_NOT_HASHED_PASSWORD;*/
+import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_NOT_HASHED_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_USER_ID;
-/*import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_NOT_HASHED_PASSWORD;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_NOT_HASHED_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_USER_ID;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_HASHED_PASSWORD;*/
+import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_HASHED_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.USER_DTO_IGNORING_FIELD;
-//import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestChangePasswordRequestDto;
-//import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUpdateUserDto;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestChangePasswordRequestDto;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUpdateUserDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUser;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserRegistrationRequestDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserResponseDto;
@@ -27,19 +27,19 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-//import com.github.ipantazi.carsharing.dto.user.UserChangePasswordDto;
-//import com.github.ipantazi.carsharing.dto.user.UserProfileUpdateDto;
+import com.github.ipantazi.carsharing.dto.user.UserChangePasswordDto;
+import com.github.ipantazi.carsharing.dto.user.UserProfileUpdateDto;
 import com.github.ipantazi.carsharing.dto.user.UserRegistrationRequestDto;
 import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
-/*import com.github.ipantazi.carsharing.dto.user.UserRoleUpdateDto;
+import com.github.ipantazi.carsharing.dto.user.UserRoleUpdateDto;
 import com.github.ipantazi.carsharing.exception.EmailAlreadyInUseException;
 import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
-import com.github.ipantazi.carsharing.exception.InvalidOldPasswordException;*/
+import com.github.ipantazi.carsharing.exception.InvalidOldPasswordException;
 import com.github.ipantazi.carsharing.exception.RegistrationException;
 import com.github.ipantazi.carsharing.mapper.UserMapper;
 import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.repository.user.UserRepository;
-//import java.util.Optional;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -112,7 +112,7 @@ public class UserServiceTest {
         verifyNoInteractions(userMapper, passwordEncoder);
     }
 
-    /*@Test
+    @Test
     @DisplayName("Test update user role when request is valid.")
     public void updateUserRole_ValidRequest_ReturnsUpdatedUser() {
         // Given
@@ -403,5 +403,5 @@ public class UserServiceTest {
         verify(userRepository, never()).save(any(User.class));
         verifyNoMoreInteractions(userRepository, passwordEncoder);
         verifyNoInteractions(userMapper);
-    }*/
+    }
 }
