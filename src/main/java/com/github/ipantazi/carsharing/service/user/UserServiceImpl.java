@@ -1,13 +1,13 @@
 package com.github.ipantazi.carsharing.service.user;
 
-//import com.github.ipantazi.carsharing.dto.user.UserChangePasswordDto;
-//import com.github.ipantazi.carsharing.dto.user.UserProfileUpdateDto;
+import com.github.ipantazi.carsharing.dto.user.UserChangePasswordDto;
+import com.github.ipantazi.carsharing.dto.user.UserProfileUpdateDto;
 import com.github.ipantazi.carsharing.dto.user.UserRegistrationRequestDto;
 import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
-/*import com.github.ipantazi.carsharing.dto.user.UserRoleUpdateDto;
+import com.github.ipantazi.carsharing.dto.user.UserRoleUpdateDto;
 import com.github.ipantazi.carsharing.exception.EmailAlreadyInUseException;
 import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
-import com.github.ipantazi.carsharing.exception.InvalidOldPasswordException;*/
+import com.github.ipantazi.carsharing.exception.InvalidOldPasswordException;
 import com.github.ipantazi.carsharing.exception.RegistrationException;
 import com.github.ipantazi.carsharing.mapper.UserMapper;
 import com.github.ipantazi.carsharing.model.User;
@@ -36,7 +36,7 @@ public class UserServiceImpl implements UserService {
         return userMapper.toUserDto(userRepository.save(user));
     }
 
-    /*@Override
+    @Override
     public UserResponseDto updateUserRole(Long id, UserRoleUpdateDto newRole) {
         User user = getUserById(id);
         user.setRole(User.Role.valueOf(newRole.role()));
@@ -78,5 +78,5 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() ->
                         new EntityNotFoundException("User not found with id: " + userId)
                 );
-    }*/
+    }
 }
