@@ -3,7 +3,7 @@ package com.github.ipantazi.carsharing.controller;
 import com.github.ipantazi.carsharing.dto.user.UserLoginRequestDto;
 import com.github.ipantazi.carsharing.dto.user.UserLoginResponseDto;
 import com.github.ipantazi.carsharing.dto.user.UserRegistrationRequestDto;
-import com.github.ipantazi.carsharing.dto.user.UserRegistrationResponseDto;
+import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
 import com.github.ipantazi.carsharing.exception.RegistrationException;
 import com.github.ipantazi.carsharing.security.AuthenticationService;
 import com.github.ipantazi.carsharing.service.user.UserService;
@@ -26,7 +26,7 @@ public class AuthenticationController {
 
     @PostMapping("/registration")
     @Operation(summary = "Registration user", description = "Registration a new user")
-    public UserRegistrationResponseDto registerUser(
+    public UserResponseDto registerUser(
             @RequestBody
             @Valid
             UserRegistrationRequestDto requestDto

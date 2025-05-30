@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import lombok.Getter;
@@ -82,6 +83,13 @@ public class User implements UserDetails {
 
     public enum Role {
         MANAGER,
-        CUSTOMER
+        CUSTOMER;
+
+        public static Role valueOfRole(String value) {
+            return Arrays.stream(values())
+                    .filter(element -> element.name().equalsIgnoreCase(value))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid user role: " + value));
+        }
     }
 }

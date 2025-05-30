@@ -6,18 +6,18 @@ import static com.github.ipantazi.carsharing.util.TestDataUtil.FIRST_NAME;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.LAST_NAME;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_USER_ID;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.PASSWORD;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_HASHED_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.TEST_LONG_DATA;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserLoginRequestDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserRegistrationRequestDto;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserRegistrationResponseDto;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserResponseDto;
 import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.assertValidationError;
 import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.assertValidationErrorList;
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.CONFLICT;
-import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.EXPECTED_USER_LOGIN_BLANK_ERRORS;
-import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.EXPECTED_USER_LOGIN_ERRORS;
-import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.EXPECTED_USER_REGISTRATION_FORMAT_ERRORS;
-import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.EXPECTED_USER_REGISTRATION_SIZE_ERRORS;
+import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.EXPECTED_LOGIN_BLANK_ERRORS;
+import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.EXPECTED_LOGIN_ERRORS;
+import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.EXPECTED_REGISTRATION_FORMAT_ERRORS;
+import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.EXPECTED_REGISTRATION_SIZE_ERRORS;
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.UNAUTHORIZED;
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.URL_LOGIN;
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.URL_REGISTRATION;
@@ -33,7 +33,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.ipantazi.carsharing.dto.user.UserLoginRequestDto;
 import com.github.ipantazi.carsharing.dto.user.UserLoginResponseDto;
 import com.github.ipantazi.carsharing.dto.user.UserRegistrationRequestDto;
-import com.github.ipantazi.carsharing.dto.user.UserRegistrationResponseDto;
+import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
 import java.util.List;
 import javax.sql.DataSource;
 import lombok.SneakyThrows;
@@ -143,7 +143,7 @@ public class AuthenticationControllerTest {
         assertValidationErrorList(
                 result,
                 objectMapper,
-                EXPECTED_USER_LOGIN_BLANK_ERRORS
+                EXPECTED_LOGIN_BLANK_ERRORS
         );
     }
 
@@ -169,7 +169,7 @@ public class AuthenticationControllerTest {
         assertValidationErrorList(
                 result,
                 objectMapper,
-                EXPECTED_USER_LOGIN_ERRORS
+                EXPECTED_LOGIN_ERRORS
         );
     }
 
@@ -206,7 +206,7 @@ public class AuthenticationControllerTest {
         //Given
         UserLoginRequestDto userLoginRequestDto = new UserLoginRequestDto(
                 "invalid" + EMAIL_DOMAIN,
-                PASSWORD
+                NOT_HASHED_PASSWORD
         );
         String jsonRequest = objectMapper.writeValueAsString(userLoginRequestDto);
 
@@ -233,7 +233,7 @@ public class AuthenticationControllerTest {
     @DisplayName("Registration of a new user.")
     void registerUser_ValidUserRegistrationRequestDto_Success() throws Exception {
         //Given
-        UserRegistrationResponseDto expected = createTestUserRegistrationResponseDto(NEW_USER_ID);
+        UserResponseDto expected = createTestUserResponseDto(NEW_USER_ID);
         UserRegistrationRequestDto userRegistrationRequestDto =
                 createTestUserRegistrationRequestDto(expected);
         String jsonRequest = objectMapper.writeValueAsString(userRegistrationRequestDto);
@@ -247,10 +247,10 @@ public class AuthenticationControllerTest {
         );
 
         //Then
-        UserRegistrationResponseDto actual = parseResponseToObject(
+        UserResponseDto actual = parseResponseToObject(
                 result,
                 objectMapper,
-                UserRegistrationResponseDto.class
+                UserResponseDto.class
         );
         assertThat(actual.email()).isEqualTo(expected.email());
     }
@@ -308,7 +308,7 @@ public class AuthenticationControllerTest {
         assertValidationErrorList(
                 result,
                 objectMapper,
-                EXPECTED_USER_REGISTRATION_SIZE_ERRORS
+                EXPECTED_REGISTRATION_SIZE_ERRORS
         );
     }
 
@@ -341,7 +341,7 @@ public class AuthenticationControllerTest {
         assertValidationErrorList(
                 result,
                 objectMapper,
-                EXPECTED_USER_REGISTRATION_FORMAT_ERRORS
+                EXPECTED_REGISTRATION_FORMAT_ERRORS
         );
     }
 
@@ -352,7 +352,7 @@ public class AuthenticationControllerTest {
         UserRegistrationRequestDto userRegistrationRequestDto =
                 new UserRegistrationRequestDto(
                         NEW_USER_ID + EMAIL_DOMAIN,
-                        PASSWORD,
+                        NOT_HASHED_PASSWORD,
                         "",
                         FIRST_NAME,
                         LAST_NAME

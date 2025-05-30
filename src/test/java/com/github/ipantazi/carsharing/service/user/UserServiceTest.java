@@ -1,11 +1,22 @@
 package com.github.ipantazi.carsharing.service.user;
 
+import static com.github.ipantazi.carsharing.util.TestDataUtil.B_CRYPT_PASSWORD;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_ID_ANOTHER_USER;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_USER_ID;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.FIRST_NAME;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.LAST_NAME;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_EMAIL;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_NOT_HASHED_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_USER_ID;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_NOT_HASHED_PASSWORD;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_USER_ID;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_HASHED_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.USER_DTO_IGNORING_FIELD;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestChangePasswordRequestDto;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUpdateUserDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUser;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserRegistrationRequestDto;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserRegistrationResponseDto;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserResponseDto;
 import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.assertObjectsAreEqualIgnoringFields;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -16,12 +27,19 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import com.github.ipantazi.carsharing.dto.user.UserChangePasswordDto;
+import com.github.ipantazi.carsharing.dto.user.UserProfileUpdateDto;
 import com.github.ipantazi.carsharing.dto.user.UserRegistrationRequestDto;
-import com.github.ipantazi.carsharing.dto.user.UserRegistrationResponseDto;
+import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
+import com.github.ipantazi.carsharing.dto.user.UserRoleUpdateDto;
+import com.github.ipantazi.carsharing.exception.EmailAlreadyInUseException;
+import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
+import com.github.ipantazi.carsharing.exception.InvalidOldPasswordException;
 import com.github.ipantazi.carsharing.exception.RegistrationException;
 import com.github.ipantazi.carsharing.mapper.UserMapper;
 import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.repository.user.UserRepository;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,7 +63,7 @@ public class UserServiceTest {
     @DisplayName("Test that a user can be registered successfully.")
     public void register_ValidUserRegistrationRequestDto_ReturnsUserRegistrationResponseDto() {
         //Given
-        UserRegistrationResponseDto expectedUserResponseDto = createTestUserRegistrationResponseDto(
+        UserResponseDto expectedUserResponseDto = createTestUserResponseDto(
                 NEW_USER_ID);
         User user = createTestUser(expectedUserResponseDto);
         UserRegistrationRequestDto userRequestDto = createTestUserRegistrationRequestDto(
@@ -57,7 +75,7 @@ public class UserServiceTest {
         when(userMapper.toUserDto(user)).thenReturn(expectedUserResponseDto);
 
         //When
-        UserRegistrationResponseDto actualUserResponseDto = userService.register(userRequestDto);
+        UserResponseDto actualUserResponseDto = userService.register(userRequestDto);
 
         //Then
         assertObjectsAreEqualIgnoringFields(
@@ -92,5 +110,298 @@ public class UserServiceTest {
         verify(userRepository, never()).save(any(User.class));
         verifyNoMoreInteractions(userRepository);
         verifyNoInteractions(userMapper, passwordEncoder);
+    }
+
+    @Test
+    @DisplayName("Test update user role when request is valid.")
+    public void updateUserRole_ValidRequest_ReturnsUpdatedUser() {
+        // Given
+        UserResponseDto expectedUserResponseDto = createTestUserResponseDto(EXISTING_USER_ID);
+        User user = createTestUser(EXISTING_USER_ID);
+        UserRoleUpdateDto userRoleUpdateDto = new UserRoleUpdateDto(
+                expectedUserResponseDto.role());
+        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+        when(userMapper.toUserDto(user)).thenReturn(expectedUserResponseDto);
+
+        // When
+        UserResponseDto actualUserResponseDto = userService.updateUserRole(
+                EXISTING_USER_ID, userRoleUpdateDto);
+
+        // Then
+        assertObjectsAreEqualIgnoringFields(
+                actualUserResponseDto,
+                expectedUserResponseDto,
+                USER_DTO_IGNORING_FIELD
+        );
+        verify(userRepository, times(1)).findById(EXISTING_USER_ID);
+        verify(userRepository, times(1)).save(user);
+        verify(userMapper, times(1)).toUserDto(user);
+        verifyNoMoreInteractions(userRepository, userMapper);
+    }
+
+    @Test
+    @DisplayName("Test update user role when user does not exist.")
+    public void updateUserRole_UserNotFound_ThrowsException() {
+        // Given
+        UserRoleUpdateDto userRoleUpdateDto = new UserRoleUpdateDto(
+                User.Role.MANAGER.toString());
+        when(userRepository.findById(NOT_EXISTING_USER_ID)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> userService.updateUserRole(
+                NOT_EXISTING_USER_ID,
+                userRoleUpdateDto
+        ))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("User not found with id: " + NOT_EXISTING_USER_ID);
+
+        verify(userRepository, times(1)).findById(NOT_EXISTING_USER_ID);
+        verify(userRepository, never()).save(any(User.class));
+        verifyNoMoreInteractions(userRepository);
+        verifyNoInteractions(userMapper);
+    }
+
+    @Test
+    @DisplayName("Test update user role when role is invalid.")
+    public void updateUserRole_InvalidRole_ThrowsException() {
+        // Given
+        UserRoleUpdateDto userRoleUpdateDto = new UserRoleUpdateDto("INVALID_ROLE");
+        User user = createTestUser(EXISTING_USER_ID);
+        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(user));
+
+        // When & Then
+        assertThatThrownBy(() -> userService.updateUserRole(
+                EXISTING_USER_ID,
+                userRoleUpdateDto
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("No enum constant "
+                        + "com.github.ipantazi.carsharing.model.User.Role.INVALID_ROLE");
+
+        verify(userRepository, times(1)).findById(EXISTING_USER_ID);
+        verify(userRepository, never()).save(any(User.class));
+        verifyNoMoreInteractions(userRepository);
+        verifyNoInteractions(userMapper);
+    }
+
+    @Test
+    @DisplayName("Test get user details when user exists.")
+    public void getUserDetails_UserExists_ReturnsUserDetails() {
+        // Given
+        UserResponseDto expectedUserResponseDto = createTestUserResponseDto(EXISTING_USER_ID);
+        User user = createTestUser(expectedUserResponseDto);
+        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(user));
+        when(userMapper.toUserDto(user)).thenReturn(expectedUserResponseDto);
+
+        // When
+        UserResponseDto actualUserResponseDto = userService.getUserDetails(EXISTING_USER_ID);
+
+        // Then
+        assertObjectsAreEqualIgnoringFields(
+                actualUserResponseDto,
+                expectedUserResponseDto,
+                USER_DTO_IGNORING_FIELD
+        );
+        verify(userRepository, times(1)).findById(EXISTING_USER_ID);
+        verify(userMapper, times(1)).toUserDto(user);
+        verifyNoMoreInteractions(userRepository, userMapper);
+    }
+
+    @Test
+    @DisplayName("Test get user details when user does not exist.")
+    public void getUserDetails_UserDoesNotExist_ThrowsException() {
+        // Given
+        when(userRepository.findById(NOT_EXISTING_USER_ID)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> userService.getUserDetails(NOT_EXISTING_USER_ID))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("User not found with id: " + NOT_EXISTING_USER_ID);
+
+        verify(userRepository, times(1)).findById(NOT_EXISTING_USER_ID);
+        verifyNoMoreInteractions(userRepository);
+        verifyNoInteractions(userMapper);
+    }
+
+    @Test
+    @DisplayName("Test update user profile when request is valid.")
+    public void updateUserProfile_ValidRequest_ReturnsUpdatedUser() {
+        // Given
+        User user = createTestUser(EXISTING_USER_ID);
+        UserResponseDto expectedUserResponseDto = new UserResponseDto(
+                EXISTING_USER_ID,
+                NEW_EMAIL,
+                FIRST_NAME,
+                LAST_NAME,
+                user.getRole().toString()
+        );
+        UserProfileUpdateDto userProfileUpdateDto = createTestUpdateUserDto(
+                expectedUserResponseDto);
+        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.existsByEmail(userProfileUpdateDto.email())).thenReturn(false);
+        when(userRepository.save(user)).thenReturn(user);
+        when(userMapper.toUserDto(user)).thenReturn(expectedUserResponseDto);
+
+        // When
+        UserResponseDto actualUserResponseDto = userService.updateUserProfile(
+                EXISTING_USER_ID, userProfileUpdateDto);
+
+        // Then
+        assertObjectsAreEqualIgnoringFields(
+                actualUserResponseDto,
+                expectedUserResponseDto,
+                USER_DTO_IGNORING_FIELD
+        );
+        verify(userRepository, times(1)).findById(EXISTING_USER_ID);
+        verify(userRepository, times(1)).existsByEmail(userProfileUpdateDto.email());
+        verify(userMapper, times(1)).updateUserEntity(userProfileUpdateDto, user);
+        verify(userRepository, times(1)).save(user);
+        verify(userMapper, times(1)).toUserDto(user);
+        verifyNoMoreInteractions(userRepository, userMapper);
+    }
+
+    @Test
+    @DisplayName("Test update user profile when user does not exist.")
+    public void updateUserProfile_UserDoesNotExist_ThrowsException() {
+        // Given
+        UserProfileUpdateDto userProfileUpdateDto = createTestUpdateUserDto(
+                createTestUserResponseDto(NOT_EXISTING_USER_ID));
+        when(userRepository.findById(NOT_EXISTING_USER_ID)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> userService.updateUserProfile(
+                NOT_EXISTING_USER_ID, userProfileUpdateDto))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("User not found with id: " + NOT_EXISTING_USER_ID);
+
+        verify(userRepository, times(1)).findById(NOT_EXISTING_USER_ID);
+        verifyNoMoreInteractions(userRepository);
+        verifyNoInteractions(userMapper);
+    }
+
+    @Test
+    @DisplayName("Test update user profile when email already exists or not equal to old e-mail.")
+    public void updateUserProfile_EmailAlreadyExistsNotEqualToOldEmail_ThrowsException() {
+        // Given
+        User testedUer = createTestUser(EXISTING_USER_ID);
+        User secondaryUser = createTestUser(EXISTING_ID_ANOTHER_USER);
+        UserProfileUpdateDto userProfileUpdateDto = new UserProfileUpdateDto(
+                secondaryUser.getEmail(),
+                FIRST_NAME,
+                LAST_NAME
+        );
+        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(testedUer));
+        when(userRepository.existsByEmail(userProfileUpdateDto.email())).thenReturn(true);
+
+        // When & Then
+        assertThatThrownBy(() -> userService.updateUserProfile(
+                EXISTING_USER_ID, userProfileUpdateDto))
+                .isInstanceOf(EmailAlreadyInUseException.class)
+                .hasMessageContaining("Email already in use: " + userProfileUpdateDto.email());
+        verify(userRepository, times(1)).findById(EXISTING_USER_ID);
+        verify(userRepository, times(1)).existsByEmail(userProfileUpdateDto.email());
+        verifyNoMoreInteractions(userRepository);
+        verifyNoInteractions(userMapper);
+    }
+
+    @Test
+    @DisplayName("Test update user profile when new email is equal to old e-mail.")
+    public void updateUserProfile_EmailEqualToOldEmail_ReturnsUpdatedUser() {
+        // Given
+        UserResponseDto expectedUserResponseDto = createTestUserResponseDto(EXISTING_USER_ID);
+        User user = createTestUser(expectedUserResponseDto);
+        UserProfileUpdateDto userProfileUpdateDto = createTestUpdateUserDto(
+                expectedUserResponseDto);
+        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+        when(userMapper.toUserDto(user)).thenReturn(expectedUserResponseDto);
+
+        // When
+        UserResponseDto actualUserResponseDto = userService.updateUserProfile(
+                EXISTING_USER_ID, userProfileUpdateDto);
+
+        // Then
+        assertObjectsAreEqualIgnoringFields(
+                actualUserResponseDto,
+                expectedUserResponseDto,
+                USER_DTO_IGNORING_FIELD
+        );
+        verify(userRepository, times(1)).findById(EXISTING_USER_ID);
+        verify(userMapper, times(1)).updateUserEntity(userProfileUpdateDto, user);
+        verify(userRepository, times(1)).save(user);
+        verify(userMapper, times(1)).toUserDto(user);
+        verifyNoMoreInteractions(userRepository, userMapper);
+    }
+
+    @Test
+    @DisplayName("Test change password when request is valid.")
+    public void changePassword_ValidRequest_ChangesPassword() {
+        // Given
+        User user = createTestUser(EXISTING_USER_ID);
+        UserChangePasswordDto requestDto = createTestChangePasswordRequestDto();
+        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(NOT_HASHED_PASSWORD, B_CRYPT_PASSWORD))
+                .thenReturn(true);
+        when(passwordEncoder.encode(requestDto.newPassword())).thenReturn(NEW_NOT_HASHED_PASSWORD);
+
+        // When
+        userService.changePassword(EXISTING_USER_ID, requestDto);
+
+        // Then
+        verify(userRepository, times(1)).findById(EXISTING_USER_ID);
+        verify(passwordEncoder, times(1)).matches(NOT_HASHED_PASSWORD, B_CRYPT_PASSWORD);
+        verify(passwordEncoder, times(1)).encode(requestDto.newPassword());
+        verify(userRepository, times(1)).save(user);
+        verifyNoMoreInteractions(userRepository, passwordEncoder);
+    }
+
+    @Test
+    @DisplayName("Test change password when user does not exist.")
+    public void changePassword_UserDoesNotExist_ThrowsException() {
+        // Given
+        UserChangePasswordDto requestDto = createTestChangePasswordRequestDto();
+        when(userRepository.findById(NOT_EXISTING_USER_ID)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> userService.changePassword(
+                NOT_EXISTING_USER_ID, requestDto))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("User not found with id: " + NOT_EXISTING_USER_ID);
+
+        verify(userRepository, times(1)).findById(NOT_EXISTING_USER_ID);
+        verify(userRepository, never()).save(any(User.class));
+        verifyNoMoreInteractions(userRepository);
+        verifyNoInteractions(passwordEncoder);
+    }
+
+    @Test
+    @DisplayName("Test change password when old password is invalid.")
+    public void changePassword_InvalidOldPassword_ThrowsException() {
+        // Given
+        User user = createTestUser(EXISTING_USER_ID);
+        UserChangePasswordDto requestDto = new UserChangePasswordDto(
+                NOT_EXISTING_NOT_HASHED_PASSWORD,
+                NEW_NOT_HASHED_PASSWORD,
+                NEW_NOT_HASHED_PASSWORD
+        );
+        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(NOT_EXISTING_NOT_HASHED_PASSWORD, B_CRYPT_PASSWORD))
+                .thenReturn(false);
+
+        // When & Then
+        assertThatThrownBy(() -> userService.changePassword(
+                EXISTING_USER_ID, requestDto))
+                .isInstanceOf(InvalidOldPasswordException.class)
+                .hasMessageContaining("Old password is incorrect");
+
+        verify(userRepository, times(1)).findById(EXISTING_USER_ID);
+        verify(passwordEncoder, times(1)).matches(
+                NOT_EXISTING_NOT_HASHED_PASSWORD,
+                B_CRYPT_PASSWORD
+        );
+        verify(userRepository, never()).save(any(User.class));
+        verifyNoMoreInteractions(userRepository, passwordEncoder);
+        verifyNoInteractions(userMapper);
     }
 }

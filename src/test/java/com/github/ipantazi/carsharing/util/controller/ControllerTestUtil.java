@@ -14,6 +14,10 @@ public class ControllerTestUtil {
     private ControllerTestUtil() {
     }
 
+    public static String toJson(ObjectMapper objectMapper, Object object) throws Exception {
+        return objectMapper.writeValueAsString(object);
+    }
+
     public static <T> List<T> parsePageContent(MvcResult result,
                                                ObjectMapper objectMapper,
                                                TypeReference<List<T>> typeRef) throws Exception {

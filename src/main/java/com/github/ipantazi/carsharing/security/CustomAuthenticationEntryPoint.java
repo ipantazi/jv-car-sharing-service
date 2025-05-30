@@ -1,4 +1,4 @@
-package com.github.ipantazi.carsharing.exception;
+package com.github.ipantazi.carsharing.security;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

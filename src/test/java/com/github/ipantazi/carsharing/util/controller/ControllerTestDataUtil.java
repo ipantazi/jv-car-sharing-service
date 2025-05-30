@@ -21,6 +21,9 @@ public class ControllerTestDataUtil extends TestDataUtil {
     public static final String URL_LOGIN = "/auth/login";
     public static final String URL_REGISTRATION = "/auth/registration";
 
+    public static final String URL_USER_ROLE = "/users/{id}/role";
+    public static final String URL_USER_ME = "/users/me";
+
     public static final List<String> EXPECTED_SAVE_CAR_ERRORS = List.of(
             "Field 'brand': Invalid brand. Brand must be between 3 and 50 characters.",
             "Field 'inventory': Invalid inventory. Inventory should be positive.",
@@ -53,17 +56,17 @@ public class ControllerTestDataUtil extends TestDataUtil {
             "Field 'inventory': Invalid inventory. Inventory should be positive.",
             "Field 'operation': Invalid operation. Operation shouldn't be null."
     );
-    public static final List<String> EXPECTED_USER_LOGIN_BLANK_ERRORS = List.of(
+    public static final List<String> EXPECTED_LOGIN_BLANK_ERRORS = List.of(
             "Field 'email': Invalid email. Email shouldn't be blank.",
             "Field 'password': Invalid password. Password shouldn't be blank.",
             "Field 'password': Invalid password. The password should be between 8 to 50."
     );
-    public static final List<String> EXPECTED_USER_LOGIN_ERRORS = List.of(
+    public static final List<String> EXPECTED_LOGIN_ERRORS = List.of(
             "Field 'email': Invalid format email.",
             "Field 'email': Email address should be exceed 50 characters.",
             "Field 'password': Invalid password. The password should be between 8 to 50."
     );
-    public static final List<String> EXPECTED_USER_REGISTRATION_SIZE_ERRORS = List.of(
+    public static final List<String> EXPECTED_REGISTRATION_SIZE_ERRORS = List.of(
             "Field 'email': Invalid format email.",
             "Field 'email': Email address must not exceed 50 characters.",
             "Field 'password': Invalid password. Password shouldn't be blank.",
@@ -75,12 +78,35 @@ public class ControllerTestDataUtil extends TestDataUtil {
             "Field 'lastName': Invalid last name. Last name shouldn't be blank.",
             "Field 'lastName': Invalid last name. Last name should be between 3 to 50."
     );
-    public static final List<String> EXPECTED_USER_REGISTRATION_FORMAT_ERRORS = List.of(
+    public static final List<String> EXPECTED_REGISTRATION_FORMAT_ERRORS = List.of(
             "Field 'email': Invalid format email.",
             "Field 'password': Password must include at least one lowercase letter, "
                     + "one uppercase letter, one number, and one special character.",
             "Field 'firstName': First name must contain only letters.",
             "Field 'lastName': Last name must be contain only letters."
+    );
+    public static final List<String> EXPECTED_UPDATE_PROFILE_NULL_ERRORS = List.of(
+            "Field 'email': Invalid email. Email shouldn't be blank.",
+            "Field 'firstName': Invalid first name. First name shouldn't be blank.",
+            "Field 'lastName': Invalid last name. Last name shouldn't be blank."
+    );
+    public static final List<String> EXPECTED_UPDATE_PROFILE_FORMAT_ERRORS = List.of(
+            "Field 'email': Invalid format email.",
+            "Field 'email': Email address must not exceed 50 characters.",
+            "Field 'firstName': Invalid first name. First name should be between 3 to 50.",
+            "Field 'firstName': First name must contain only letters.",
+            "Field 'lastName': Invalid last name. Last name should be between 3 to 50.",
+            "Field 'lastName': Last name must be contain only letters."
+    );
+    public static final List<String> EXPECTED_CHANGE_PASSWORD_NULL_ERRORS = List.of(
+            "Field 'newPassword': New password is required",
+            "Field 'oldPassword': Old password is required"
+    );
+    public static final List<String> EXPECTED_CHANGE_PASSWORD_FORMAT_ERRORS = List.of(
+            "Field 'newPassword': Invalid new password. The password should be between 8 to "
+                    + "50 characters.",
+            "Field 'newPassword': Password must include at least one lowercase letter, "
+                    + "one uppercase letter, one number, and one special character."
     );
 
     private ControllerTestDataUtil() {

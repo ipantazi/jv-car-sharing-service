@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: 05-update-user-fields
+      author: Illia Pantazi
+      changes:
+        - modifyDataType:
+            tableName: users
+            columnName: email
+            newDataType: varchar(50)
+
+        - modifyDataType:
+            tableName: users
+            columnName: first_name
+            newDataType: varchar(50)
+
+        - modifyDataType:
+            tableName: users
+            columnName: last_name
+            newDataType: varchar(50)
+
+        - modifyDataType:
+            tableName: users
+            columnName: role
+            newDataType: varchar(20)
