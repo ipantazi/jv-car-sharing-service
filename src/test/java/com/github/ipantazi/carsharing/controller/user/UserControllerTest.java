@@ -35,6 +35,7 @@ import static com.github.ipantazi.carsharing.util.controller.DatabaseTestUtil.ex
 import static com.github.ipantazi.carsharing.util.controller.MockMvcUtil.buildMockMvc;
 import static com.github.ipantazi.carsharing.util.controller.MvcTestHelper.createJsonMvcResult;
 import static com.github.ipantazi.carsharing.util.controller.MvcTestHelper.createMvcResult;
+import static com.github.ipantazi.carsharing.util.controller.SecurityTestUtil.authenticateTestUser;
 import static com.github.ipantazi.carsharing.util.controller.SecurityTestUtil.setAuthenticationForUser;
 import static com.github.ipantazi.carsharing.util.controller.SecurityTestUtil.wrapAsUserDetails;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -192,7 +193,7 @@ public class UserControllerTest {
         //When
         MvcResult result = createJsonMvcResult(
                 mockMvc,
-                patch(URL_USER_ROLE, NOT_EXISTING_USER_ID), // Non-existing user ID
+                patch(URL_USER_ROLE, NOT_EXISTING_USER_ID),
                 status().isNotFound(),
                 jsonRequest
         );
@@ -367,9 +368,7 @@ public class UserControllerTest {
     void updateUserProfile_ValidRequestWithRoleCustomer_shouldReturnUserResponseDto()
             throws Exception {
         // Given
-        User user = createTestUser(EXISTING_USER_ID);
-        CustomUserDetails customUserDetails = wrapAsUserDetails(user);
-        setAuthenticationForUser(customUserDetails);
+        authenticateTestUser(EXISTING_USER_ID, User.Role.CUSTOMER);
 
         UserResponseDto expectedUserResponseDto = new UserResponseDto(
                 EXISTING_USER_ID,
@@ -412,9 +411,7 @@ public class UserControllerTest {
     void updateUserProfile_ValidRequestWithRoleManager_shouldReturnUserResponseDto()
             throws Exception {
         // Given
-        User user = createTestUser(EXISTING_ID_ANOTHER_USER);
-        CustomUserDetails customUserDetails = wrapAsUserDetails(user);
-        setAuthenticationForUser(customUserDetails);
+        authenticateTestUser(EXISTING_ID_ANOTHER_USER, User.Role.MANAGER);
 
         UserResponseDto expectedUserResponseDto = new UserResponseDto(
                 EXISTING_ID_ANOTHER_USER,
@@ -516,9 +513,7 @@ public class UserControllerTest {
     @DisplayName("Test update user profile when email already in use")
     void updateUserProfile_EmailAlreadyInUse_ShouldReturnConflict() throws Exception {
         //Given
-        User user = createTestUser(EXISTING_USER_ID);
-        CustomUserDetails customUserDetails = wrapAsUserDetails(user);
-        setAuthenticationForUser(customUserDetails);
+        authenticateTestUser(EXISTING_USER_ID, User.Role.CUSTOMER);
 
         String newEmail = EXISTING_ID_ANOTHER_USER + EMAIL_DOMAIN;
         UserProfileUpdateDto userProfileUpdateDto = new UserProfileUpdateDto(
@@ -549,9 +544,7 @@ public class UserControllerTest {
     @DisplayName("Test update user profile when request data is null")
     void updateUserProfile_RequestDataIsNull_ShouldReturnBadRequest() throws Exception {
         //Given
-        User user = createTestUser(EXISTING_USER_ID);
-        CustomUserDetails customUserDetails = wrapAsUserDetails(user);
-        setAuthenticationForUser(customUserDetails);
+        authenticateTestUser(EXISTING_USER_ID, User.Role.CUSTOMER);
 
         UserProfileUpdateDto userProfileUpdateDto = new UserProfileUpdateDto(
                 null,
@@ -580,9 +573,7 @@ public class UserControllerTest {
     @DisplayName("Test update user profile with invalid request data format")
     void updateUserProfile_InvalidRequestDataFormat_ShouldReturnBadRequest() throws Exception {
         //Given
-        User user = createTestUser(EXISTING_USER_ID);
-        CustomUserDetails customUserDetails = wrapAsUserDetails(user);
-        setAuthenticationForUser(customUserDetails);
+        authenticateTestUser(EXISTING_USER_ID, User.Role.CUSTOMER);
 
         UserProfileUpdateDto userProfileUpdateDto = new UserProfileUpdateDto(
                 TEST_LONG_DATA,
@@ -649,6 +640,7 @@ public class UserControllerTest {
     void changePassword_ManagerRole_Success() throws Exception {
         //Given
         User user = createTestUser(EXISTING_ID_ANOTHER_USER);
+        user.setRole(User.Role.MANAGER);
         CustomUserDetails customUserDetails = wrapAsUserDetails(user);
         setAuthenticationForUser(customUserDetails);
 
@@ -696,9 +688,7 @@ public class UserControllerTest {
     @DisplayName("Test change password with null password")
     void changePassword_NullPassword_ShouldReturnBadRequest() throws Exception {
         //Given
-        User user = createTestUser(EXISTING_USER_ID);
-        CustomUserDetails customUserDetails = wrapAsUserDetails(user);
-        setAuthenticationForUser(customUserDetails);
+        authenticateTestUser(EXISTING_USER_ID, User.Role.CUSTOMER);
 
         UserChangePasswordDto userChangePasswordDto = new UserChangePasswordDto(
                 null,
@@ -758,9 +748,7 @@ public class UserControllerTest {
     @DisplayName("Test change password with invalid old password")
     void changePassword_InvalidOldPassword_ShouldReturnBadRequest() throws Exception {
         //Given
-        User user = createTestUser(EXISTING_USER_ID);
-        CustomUserDetails customUserDetails = wrapAsUserDetails(user);
-        setAuthenticationForUser(customUserDetails);
+        authenticateTestUser(EXISTING_USER_ID, User.Role.CUSTOMER);
 
         UserChangePasswordDto userChangePasswordDto = new UserChangePasswordDto(
                 NOT_EXISTING_NOT_HASHED_PASSWORD,

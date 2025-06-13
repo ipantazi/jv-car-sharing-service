@@ -18,6 +18,7 @@ import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUser;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserRegistrationRequestDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserResponseDto;
 import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.assertObjectsAreEqualIgnoringFields;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -403,5 +404,100 @@ public class UserServiceTest {
         verify(userRepository, never()).save(any(User.class));
         verifyNoMoreInteractions(userRepository, passwordEncoder);
         verifyNoInteractions(userMapper);
+    }
+
+    @Test
+    @DisplayName("Test isManager() method when user is MANAGER.")
+    public void isManager_UserIsManager_ReturnsTrue() {
+        //Given
+        User user = createTestUser(EXISTING_ID_ANOTHER_USER);
+        user.setRole(User.Role.MANAGER);
+
+        when(userRepository.findById(EXISTING_ID_ANOTHER_USER)).thenReturn(Optional.of(user));
+
+        // When
+        boolean actual = userService.isManager(EXISTING_ID_ANOTHER_USER);
+
+        // Then
+        assertThat(actual).isTrue();
+        verify(userRepository, times(1)).findById(EXISTING_ID_ANOTHER_USER);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("Test isManager() method when user is CUSTOMER.")
+    public void isManager_UserIsCustomer_ReturnsFalse() {
+        //Given
+        User user = createTestUser(EXISTING_USER_ID);
+
+        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(user));
+
+        // When
+        boolean actual = userService.isManager(EXISTING_USER_ID);
+
+        // Then
+        assertThat(actual).isFalse();
+        verify(userRepository, times(1)).findById(EXISTING_USER_ID);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("Test isManager when userId not existing")
+    public void isManager_UserIsNotExist_ThrowsException() {
+        // When & Then
+        assertThatThrownBy(() -> userService.isManager(NOT_EXISTING_USER_ID))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("User not found with id: " + NOT_EXISTING_USER_ID);
+        verify(userRepository, times(1)).findById(NOT_EXISTING_USER_ID);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("Test validateUserExistsOrThrow() method with exists userId.")
+    public void validateUserExistsOrThrow_ExistsUserId_returnsTrue() {
+        // Given
+        Long expectedStatus = 0L;
+        when(userRepository.existsSoftDeletedUserById(EXISTING_USER_ID)).thenReturn(expectedStatus);
+        when(userRepository.existsById(EXISTING_USER_ID)).thenReturn(true);
+
+        // When
+        boolean actual = userService.validateUserExistsOrThrow(EXISTING_USER_ID);
+
+        // Then
+        assertThat(actual).isTrue();
+        verify(userRepository, times(1)).existsById(EXISTING_USER_ID);
+        verify(userRepository, times(1)).existsSoftDeletedUserById(EXISTING_USER_ID);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("Test validateUserExistsOrThrow() method when user is soft deleted.")
+    public void validateUserExistsOrThrow_SoftDeletedUser_ThrowsException() {
+        // Given
+        Long expectedStatus = 1L;
+        when(userRepository.existsSoftDeletedUserById(EXISTING_USER_ID)).thenReturn(expectedStatus);
+
+        // When & Then
+        assertThatThrownBy(() -> userService.validateUserExistsOrThrow(EXISTING_USER_ID))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("User with id: " + EXISTING_USER_ID + " was previously deleted.");
+        verify(userRepository, times(1)).existsSoftDeletedUserById(EXISTING_USER_ID);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("Test validateUserExistsOrThrow() method when user not found")
+    public void validateUserExistsOrThrow_NotExistingUserId_ThrowsException() {
+        // Given
+        Long expectedStatus = 0L;
+        when(userRepository.existsSoftDeletedUserById(EXISTING_USER_ID)).thenReturn(expectedStatus);
+        when(userRepository.existsById(EXISTING_USER_ID)).thenReturn(false);
+
+        // When & Then
+        assertThatThrownBy(() -> userService.validateUserExistsOrThrow(EXISTING_USER_ID))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("Can't find user with id: " + EXISTING_USER_ID);
+        verify(userRepository, times(1)).existsSoftDeletedUserById(EXISTING_USER_ID);
+        verifyNoMoreInteractions(userRepository);
     }
 }

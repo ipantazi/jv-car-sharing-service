@@ -24,6 +24,10 @@ public class ControllerTestDataUtil extends TestDataUtil {
     public static final String URL_USER_ROLE = "/users/{id}/role";
     public static final String URL_USER_ME = "/users/me";
 
+    public static final String URL_RENTALS = "/rentals";
+    public static final String URL_RENTAL_BY_ID = "/rentals/{id}";
+    public static final String URL_RETURN_RENTAL = "/rentals/{id}/return";
+
     public static final List<String> EXPECTED_SAVE_CAR_ERRORS = List.of(
             "Field 'brand': Invalid brand. Brand must be between 3 and 50 characters.",
             "Field 'inventory': Invalid inventory. Inventory should be positive.",

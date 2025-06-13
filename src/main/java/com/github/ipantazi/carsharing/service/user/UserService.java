@@ -18,4 +18,8 @@ public interface UserService {
     UserResponseDto updateUserProfile(Long userId, UserProfileUpdateDto userProfileUpdateDto);
 
     void changePassword(Long id, UserChangePasswordDto requestDto);
+
+    boolean isManager(Long userId);
+
+    boolean validateUserExistsOrThrow(Long userId);
 }

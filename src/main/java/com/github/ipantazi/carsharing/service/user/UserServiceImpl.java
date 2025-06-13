@@ -73,6 +73,24 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
     }
 
+    @Override
+    public boolean isManager(Long userId) {
+        User user = getUserById(userId);
+        return user.getRole().equals(User.Role.MANAGER);
+    }
+
+    @Override
+    public boolean validateUserExistsOrThrow(Long userId) { // Test
+        if (userRepository.existsSoftDeletedUserById(userId) == 1L) {
+            throw new IllegalArgumentException("User with id: " + userId
+                    + " was previously deleted.");
+        }
+        if (!userRepository.existsById(userId)) {
+            throw new EntityNotFoundException("Can't find user with id: " + userId);
+        }
+        return true;
+    }
+
     private User getUserById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() ->
