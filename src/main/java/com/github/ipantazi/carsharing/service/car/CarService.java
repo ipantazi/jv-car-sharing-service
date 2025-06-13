@@ -5,6 +5,8 @@ import com.github.ipantazi.carsharing.dto.car.CarRequestDto;
 import com.github.ipantazi.carsharing.dto.car.InventoryRequestDto;
 import com.github.ipantazi.carsharing.dto.car.UpdateCarDto;
 import com.github.ipantazi.carsharing.model.Car;
+import java.util.List;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -22,4 +24,8 @@ public interface CarService {
     Page<CarDto> findAll(Pageable pageable);
 
     Car findCarById(Long id);
+
+    void validateCarAvailableForRental(Long carId);
+
+    List<CarDto> getByIds(Set<Long> ids);
 }

@@ -3,8 +3,7 @@ package com.github.ipantazi.carsharing.controller.car;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.ALTERNATIVE_CAR_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_BRAND;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_DAILY_FEE;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_DTO_IGNORING_FIELDS;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_DTO_IGNORING_ID;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_DTO_IGNORING_FIELD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_INVENTORY;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_MODEL;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_PAGEABLE;
@@ -128,7 +127,7 @@ public class CarControllerTest {
 
         // Then
         CarDto actualCarDto = parseResponseToObject(result, objectMapper, CarDto.class);
-        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_ID);
+        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_FIELD);
     }
 
     @Test
@@ -323,7 +322,7 @@ public class CarControllerTest {
         assertCollectionsAreEqualIgnoringFields(
                 actualCarDtoList,
                 expectedCarDtoList,
-                CAR_DTO_IGNORING_ID
+                CAR_DTO_IGNORING_FIELD
         );
         assertPageMetadataEquals(
                 result,
@@ -380,7 +379,7 @@ public class CarControllerTest {
 
         // Then
         CarDto actualCarDto = parseResponseToObject(result, objectMapper, CarDto.class);
-        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_FIELDS);
+        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_FIELD);
     }
 
     @Test
@@ -518,7 +517,7 @@ public class CarControllerTest {
 
         // Then
         CarDto actualCarDto = parseResponseToObject(result, objectMapper, CarDto.class);
-        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_ID);
+        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_FIELD);
     }
 
     @Test

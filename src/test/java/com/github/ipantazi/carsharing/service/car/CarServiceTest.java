@@ -1,7 +1,7 @@
 package com.github.ipantazi.carsharing.service.car;
 
-import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_DTO_IGNORING_ID;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_INVENTORY;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_DTO_IGNORING_FIELD;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_IGNORING_FIELDS;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_PAGEABLE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_CAR_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_CAR_ID;
@@ -28,6 +28,7 @@ import com.github.ipantazi.carsharing.dto.car.CarRequestDto;
 import com.github.ipantazi.carsharing.dto.car.InventoryRequestDto;
 import com.github.ipantazi.carsharing.dto.car.UpdateCarDto;
 import com.github.ipantazi.carsharing.dto.enums.OperationType;
+import com.github.ipantazi.carsharing.exception.CarNotAvailableException;
 import com.github.ipantazi.carsharing.exception.DataProcessingException;
 import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
 import com.github.ipantazi.carsharing.mapper.CarMapper;
@@ -36,6 +37,7 @@ import com.github.ipantazi.carsharing.repository.car.CarRepository;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,6 +54,9 @@ public class CarServiceTest {
 
     @Mock
     private CarMapper carMapper;
+
+    @Mock
+    private InventoryService inventoryService;
 
     @InjectMocks
     private CarServiceImpl carService;
@@ -81,7 +86,7 @@ public class CarServiceTest {
         CarDto actualCarDto = carService.save(carRequestDto);
 
         // Then
-        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_ID);
+        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_FIELD);
         verify(carRepository, times(1)).existsByModelAndBrand(
                 carRequestDto.model(),
                 carRequestDto.brand()
@@ -110,7 +115,7 @@ public class CarServiceTest {
         // When & Then
         assertThatThrownBy(() -> carService.save(carRequestDto))
                 .isInstanceOf(DataProcessingException.class)
-                .hasMessageContaining("Car with model: " + carRequestDto.model() + " and brand: "
+                .hasMessage("Car with model: " + carRequestDto.model() + " and brand: "
                         + carRequestDto.brand() + " already exists.");
         verify(carRepository, times(1)).existsByModelAndBrand(
                 carRequestDto.model(),
@@ -140,7 +145,7 @@ public class CarServiceTest {
         // When & Then
         assertThatThrownBy(() -> carService.save(carRequestDto))
                 .isInstanceOf(DataProcessingException.class)
-                .hasMessageContaining("Car with model: " + carRequestDto.model() + " and brand: "
+                .hasMessage("Car with model: " + carRequestDto.model() + " and brand: "
                         + carRequestDto.brand() + " already exists, but was previously deleted.");
         verify(carRepository, times(1)).existsByModelAndBrand(
                 carRequestDto.model(),
@@ -169,7 +174,7 @@ public class CarServiceTest {
         CarDto actualCarDto = carService.getById(EXISTING_CAR_ID);
 
         // Then
-        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_ID);
+        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_FIELD);
         verify(carRepository, times(1)).findById(EXISTING_CAR_ID);
         verify(carMapper, times(1)).toCarDto(car);
         verifyNoMoreInteractions(carRepository, carMapper);
@@ -184,7 +189,7 @@ public class CarServiceTest {
         // When & Then
         assertThatThrownBy(() -> carService.getById(NOT_EXISTING_CAR_ID))
                 .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("Car not found with id: " + NOT_EXISTING_CAR_ID);
+                .hasMessage("Car not found with id: " + NOT_EXISTING_CAR_ID);
         verify(carRepository, times(1)).findById(NOT_EXISTING_CAR_ID);
         verifyNoMoreInteractions(carRepository);
         verifyNoInteractions(carMapper);
@@ -202,8 +207,8 @@ public class CarServiceTest {
         String model = updateCarDto.model();
 
         when(carRepository.findById(EXISTING_CAR_ID)).thenReturn(Optional.of(car));
-        when(carRepository.existsByModelAndBrand(model,brand)).thenReturn(false);
-        when(carRepository.existsSoftDeletedByModelAndBrand(model,brand)).thenReturn(existsStatus);
+        when(carRepository.existsByModelAndBrand(model, brand)).thenReturn(false);
+        when(carRepository.existsSoftDeletedByModelAndBrand(model, brand)).thenReturn(existsStatus);
         when(carRepository.save(car)).thenReturn(car);
         when(carMapper.toCarDto(car)).thenReturn(expectedCarDto);
 
@@ -211,7 +216,7 @@ public class CarServiceTest {
         CarDto actualCarDto = carService.update(EXISTING_CAR_ID, updateCarDto);
 
         // Then
-        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_ID);
+        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_FIELD);
         verify(carRepository, times(1)).findById(EXISTING_CAR_ID);
         verify(carRepository, times(1)).existsByModelAndBrand(model, brand);
         verify(carRepository, times(1)).existsSoftDeletedByModelAndBrand(model, brand);
@@ -237,7 +242,7 @@ public class CarServiceTest {
         // When & Then
         assertThatThrownBy(() -> carService.update(EXISTING_CAR_ID, updateCarDto))
                 .isInstanceOf(DataProcessingException.class)
-                .hasMessageContaining("Car with model: " + updateCarDto.model() + " and brand: "
+                .hasMessage("Car with model: " + updateCarDto.model() + " and brand: "
                         + updateCarDto.brand() + " already exists.");
         verify(carRepository, times(1)).findById(EXISTING_CAR_ID);
         verify(carRepository, times(1)).existsByModelAndBrand(model, brand);
@@ -265,7 +270,7 @@ public class CarServiceTest {
         // When & Then
         assertThatThrownBy(() -> carService.update(EXISTING_CAR_ID, updateCarDto))
                 .isInstanceOf(DataProcessingException.class)
-                .hasMessageContaining("Car with model: " + updateCarDto.model() + " and brand: "
+                .hasMessage("Car with model: " + updateCarDto.model() + " and brand: "
                         + updateCarDto.brand() + " already exists, but was previously deleted.");
         verify(carRepository, times(1)).findById(EXISTING_CAR_ID);
         verify(carRepository, times(1)).existsByModelAndBrand(model, brand);
@@ -285,7 +290,7 @@ public class CarServiceTest {
         // When & Then
         assertThatThrownBy(() -> carService.update(NOT_EXISTING_CAR_ID, updateCarDto))
                 .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("Car not found with id: " + NOT_EXISTING_CAR_ID);
+                .hasMessage("Car not found with id: " + NOT_EXISTING_CAR_ID);
         verify(carRepository, times(1)).findById(NOT_EXISTING_CAR_ID);
         verify(carRepository, never()).save(any());
         verifyNoMoreInteractions(carRepository);
@@ -343,7 +348,7 @@ public class CarServiceTest {
         assertObjectsAreEqualIgnoringFields(
                 actualCarDtoList.get(0),
                 expectedCarDto,
-                CAR_DTO_IGNORING_ID
+                CAR_DTO_IGNORING_FIELD
         );
     }
 
@@ -377,130 +382,96 @@ public class CarServiceTest {
                 OperationType.SET
         );
 
-        when(carRepository.findById(EXISTING_CAR_ID)).thenReturn(Optional.of(car));
-        when(carRepository.save(car)).thenReturn(car);
+        when(inventoryService.adjustInventory(
+                EXISTING_CAR_ID,
+                inventoryRequestDto.getInventory(),
+                inventoryRequestDto.getOperation()
+        )).thenReturn(car);
         when(carMapper.toCarDto(car)).thenReturn(expectedCarDto);
 
         // When
         CarDto actualCarDto = carService.manageInventory(EXISTING_CAR_ID, inventoryRequestDto);
 
         // Then
-        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_ID);
+        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_FIELD);
         assertThat(actualCarDto.getInventory()).isNotEqualTo(inventoryBeforeUpdate);
-        verify(carRepository, times(1)).findById(EXISTING_CAR_ID);
+        verify(inventoryService, times(1)).adjustInventory(
+                EXISTING_CAR_ID,
+                inventoryRequestDto.getInventory(),
+                inventoryRequestDto.getOperation()
+        );
         verify(carMapper, times(1)).toCarDto(car);
-        verify(carRepository, times(1)).save(car);
-        verifyNoMoreInteractions(carRepository, carMapper);
+        verifyNoMoreInteractions(inventoryService, carMapper);
     }
 
     @Test
-    @DisplayName("Test operation INCREASE manageInventory() method with valid request.")
-    public void manageInventory_IncreaseOperation_ReturnsCarDto() {
+    @DisplayName("Test validateCarAvailableForRental() method when the car is available")
+    void validateCarAvailableForRental_CarAvailable_CheckSuccess() {
         // Given
-        int inventoryBeforeUpdate = 2;
-        int inventoryFromRequest = 3;
-        CarDto expectedCarDto = createTestCarDto(EXISTING_CAR_ID);
-        Car car = createTestCar(expectedCarDto);
-        car.setInventory(inventoryBeforeUpdate);
-        InventoryRequestDto inventoryRequestDto = createTestInventoryRequestDto(
-                inventoryFromRequest,
-                OperationType.INCREASE
-        );
-
+        Car car = createTestCar(EXISTING_CAR_ID);
         when(carRepository.findById(EXISTING_CAR_ID)).thenReturn(Optional.of(car));
-        when(carRepository.save(car)).thenReturn(car);
-        when(carMapper.toCarDto(car)).thenReturn(expectedCarDto);
 
         // When
-        CarDto actualCarDto = carService.manageInventory(EXISTING_CAR_ID, inventoryRequestDto);
+        carService.validateCarAvailableForRental(EXISTING_CAR_ID);
 
         // Then
-        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_ID);
-        assertThat(actualCarDto.getInventory())
-                .isEqualTo(inventoryBeforeUpdate + inventoryFromRequest);
         verify(carRepository, times(1)).findById(EXISTING_CAR_ID);
-        verify(carMapper, times(1)).toCarDto(car);
-        verify(carRepository, times(1)).save(car);
-        verifyNoMoreInteractions(carRepository, carMapper);
+        verifyNoMoreInteractions(carRepository);
     }
 
     @Test
-    @DisplayName("Test operation DECREASE manageInventory() method with valid request.")
-    public void manageInventory_DecreaseOperation_ReturnsCarDto() {
+    @DisplayName("Test validateCarAvailableForRental() method when the car is not available")
+    void validateCarAvailableForRental_CarNotAvailable_ThrowsException() {
         // Given
-        int inventoryBeforeUpdate = 10;
-        int inventoryFromRequest = 5;
-        CarDto expectedCarDto = createTestCarDto(EXISTING_CAR_ID);
-        Car car = createTestCar(expectedCarDto);
-        car.setInventory(inventoryBeforeUpdate);
-        InventoryRequestDto inventoryRequestDto = createTestInventoryRequestDto(
-                inventoryFromRequest,
-                OperationType.DECREASE
-        );
-
-        when(carRepository.findById(EXISTING_CAR_ID)).thenReturn(Optional.of(car));
-        when(carRepository.save(car)).thenReturn(car);
-        when(carMapper.toCarDto(car)).thenReturn(expectedCarDto);
-
-        // When
-        CarDto actualCarDto = carService.manageInventory(EXISTING_CAR_ID, inventoryRequestDto);
-
-        // Then
-        assertObjectsAreEqualIgnoringFields(actualCarDto, expectedCarDto, CAR_DTO_IGNORING_ID);
-        assertThat(actualCarDto.getInventory())
-                .isEqualTo(inventoryBeforeUpdate - inventoryFromRequest);
-        verify(carRepository, times(1)).findById(EXISTING_CAR_ID);
-        verify(carMapper, times(1)).toCarDto(car);
-        verify(carRepository, times(1)).save(car);
-        verifyNoMoreInteractions(carRepository, carMapper);
-    }
-
-    @Test
-    @DisplayName("Test manageInventory() method when not enough inventory to decrease.")
-    public void manageInventory_NotEnoughInventoryToDecrease_ThrowsException() {
-        // Given
-        int inventoryBeforeUpdate = 2;
-        int inventoryFromRequest = 3;
-        InventoryRequestDto inventoryRequestDto = createTestInventoryRequestDto(
-                inventoryFromRequest,
-                OperationType.DECREASE
-        );
-        Car car = createTestCar(createTestCarDto(EXISTING_CAR_ID));
-        car.setInventory(inventoryBeforeUpdate);
-
+        Car car = createTestCar(EXISTING_CAR_ID);
+        car.setInventory(0);
         when(carRepository.findById(EXISTING_CAR_ID)).thenReturn(Optional.of(car));
 
         // When & Then
-        assertThatThrownBy(() -> carService.manageInventory(EXISTING_CAR_ID, inventoryRequestDto))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Not enough inventory to decrease.");
+        assertThatThrownBy(() -> carService.validateCarAvailableForRental(EXISTING_CAR_ID))
+                .isInstanceOf(CarNotAvailableException.class)
+                .hasMessage("Car with id: " + EXISTING_CAR_ID + " is not available.");
         verify(carRepository, times(1)).findById(EXISTING_CAR_ID);
-        verify(carRepository, never()).save(any());
         verifyNoMoreInteractions(carRepository);
-        verifyNoInteractions(carMapper);
     }
 
     @Test
-    @DisplayName("Test manageInventory() method with invalid car id.")
-    public void manageInventory_InvalidCarId_ThrowsException() {
+    @DisplayName("Test validateCarAvailableForRental() method when the car does not exist")
+    void validateCarAvailableForRental_CarDoesNotExist_ThrowsException() {
         // Given
-        InventoryRequestDto inventoryRequestDto = createTestInventoryRequestDto(
-                CAR_INVENTORY,
-                OperationType.SET
-        );
-
         when(carRepository.findById(NOT_EXISTING_CAR_ID)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThatThrownBy(() -> carService.manageInventory(
-                NOT_EXISTING_CAR_ID,
-                inventoryRequestDto
-        ))
+        assertThatThrownBy(() -> carService.validateCarAvailableForRental(NOT_EXISTING_CAR_ID))
                 .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("Car not found with id: " + NOT_EXISTING_CAR_ID);
+                .hasMessage("Car not found with id: " + NOT_EXISTING_CAR_ID);
         verify(carRepository, times(1)).findById(NOT_EXISTING_CAR_ID);
-        verify(carRepository, never()).save(any());
         verifyNoMoreInteractions(carRepository);
-        verifyNoInteractions(carMapper);
+    }
+
+    @Test
+    @DisplayName("Test getByIds() method")
+    void getByIds_ReturnsCarDtos() {
+        // Given
+        CarDto expectedCarDto = createTestCarDto(EXISTING_CAR_ID);
+        Car car = createTestCar(expectedCarDto);
+        Set<Long> carIds = Set.of(EXISTING_CAR_ID);
+        List<Car> cars = Collections.singletonList(car);
+        when(carRepository.findAllById(carIds)).thenReturn(cars);
+        when(carMapper.toCarDto(car)).thenReturn(expectedCarDto);
+
+        // When
+        List<CarDto> actualCarDtos = carService.getByIds(carIds);
+
+        // Then
+        assertThat(actualCarDtos).hasSize(1);
+        assertObjectsAreEqualIgnoringFields(
+                actualCarDtos.get(0),
+                expectedCarDto,
+                CAR_IGNORING_FIELDS
+        );
+        verify(carRepository, times(1)).findAllById(carIds);
+        verify(carMapper, times(1)).toCarDto(car);
+        verifyNoMoreInteractions(carRepository, carMapper);
     }
 }

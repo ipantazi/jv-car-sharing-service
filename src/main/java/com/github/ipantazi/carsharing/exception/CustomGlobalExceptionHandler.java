@@ -90,6 +90,13 @@ public class CustomGlobalExceptionHandler extends ResponseEntityExceptionHandler
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(CarNotAvailableException.class)
+    public ResponseEntity<Object> handleCarNotAvailableException(
+            CarNotAvailableException ex) {
+        Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
             @NonNull HttpMessageNotReadableException ex,
