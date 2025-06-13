@@ -1,5 +1,6 @@
 package com.github.ipantazi.carsharing.security;
 
+import com.github.ipantazi.carsharing.model.User;
 import java.util.Collection;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -10,9 +11,16 @@ import org.springframework.security.core.userdetails.UserDetails;
 public class CustomUserDetails implements UserDetails {
     @Getter
     private final Long id;
+
     private final String email;
+
     private final String password;
+
     private final Collection<? extends GrantedAuthority> authorities;
+
+    @Getter
+    private final User.Role role;
+
     private final boolean isEnabled;
 
     @Override
