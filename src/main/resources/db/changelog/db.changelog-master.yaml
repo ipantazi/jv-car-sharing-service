@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changes/04-insert-initial-users.yaml
   - include:
       file: db/changelog/changes/05-update-user-fields.yaml
+  - include:
+      file: db/changelog/changes/06-create-rental-table.yaml
