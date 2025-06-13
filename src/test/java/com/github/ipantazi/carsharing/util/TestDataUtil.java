@@ -5,24 +5,15 @@ import com.github.ipantazi.carsharing.dto.car.CarRequestDto;
 import com.github.ipantazi.carsharing.dto.car.InventoryRequestDto;
 import com.github.ipantazi.carsharing.dto.car.UpdateCarDto;
 import com.github.ipantazi.carsharing.dto.enums.OperationType;
-import com.github.ipantazi.carsharing.dto.enums.RentalStatus;
-import com.github.ipantazi.carsharing.dto.rental.RentalDetailedDto;
-import com.github.ipantazi.carsharing.dto.rental.RentalRequestDto;
-import com.github.ipantazi.carsharing.dto.rental.RentalResponseDto;
 import com.github.ipantazi.carsharing.dto.user.UserChangePasswordDto;
 import com.github.ipantazi.carsharing.dto.user.UserLoginRequestDto;
 import com.github.ipantazi.carsharing.dto.user.UserProfileUpdateDto;
 import com.github.ipantazi.carsharing.dto.user.UserRegistrationRequestDto;
 import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
 import com.github.ipantazi.carsharing.model.Car;
-import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.model.User;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.LongStream;
 import org.springframework.data.domain.PageRequest;
@@ -43,10 +34,10 @@ public class TestDataUtil {
     public static final Long SAFE_DELETED_USER_ID = 103L;
     public static final Long NEW_USER_ID = 104L;
     public static final Long NOT_EXISTING_USER_ID = 999L;
-    public static final Long EXISTING_RENTAL_ID = 101L;
+    /*public static final Long EXISTING_RENTAL_ID = 101L;
     public static final Long EXISTING_RENTAL_ID_ANOTHER_USER = 102L;
     public static final Long NEW_RENTAL_ID = 103L;
-    public static final Long NOT_EXISTING_RENTAL_ID = 999L;
+    public static final Long NOT_EXISTING_RENTAL_ID = 999L;*/
 
     public static final String CAR_MODEL = "Test Car ";
     public static final String CAR_BRAND = "Test Brand ";
@@ -65,7 +56,7 @@ public class TestDataUtil {
     public static final String FIRST_NAME = "FirstName";
     public static final String LAST_NAME = "LastName";
 
-    public static final int MIN_RENTAL_DAYS = 2;
+    /*public static final int MIN_RENTAL_DAYS = 2;
     public static final int MAX_RENTAL_DAYS = 30;
     public static final int NUMBER_OF_RENTAL_DAYS = 5;
     public static final BigDecimal LATE_FEE_MULTIPLIER = BigDecimal.valueOf(1.5);
@@ -77,7 +68,7 @@ public class TestDataUtil {
     public static final ZoneId ZONE = ZoneId.of("UTC");
     public static final Instant FIXED_INSTANT = RENTAL_DATE.plusDays(4).atStartOfDay(ZONE)
             .toInstant();
-    public static final LocalDate FIXED_DATE = LocalDate.ofInstant(FIXED_INSTANT, ZONE);
+    public static final LocalDate FIXED_DATE = LocalDate.ofInstant(FIXED_INSTANT, ZONE);*/
 
     public static final String UPDATED = "Updated ";
     public static final String UPDATED_STATUS = "SUV";
@@ -97,26 +88,26 @@ public class TestDataUtil {
     public static final String NOT_EXISTING_CAR_TYPE = "NOT_EXISTING_TYPE";
     public static final int INVALID_CAR_INVENTORY = -1;
     public static final BigDecimal INVALID_CAR_DAILY_FEE = new BigDecimal("999.999");
-    public static final int INVALID_MAX_RENTAL_DAYS = 999;
-    public static final int INVALID_MIN_RENTAL_DAYS = 1;
+    /*public static final int INVALID_MAX_RENTAL_DAYS = 999;
+    public static final int INVALID_MIN_RENTAL_DAYS = 1;*/
 
     public static final String[] CAR_IGNORING_FIELDS = new String[] {"id", "type", "isDeleted"};
     public static final String CAR_DTO_IGNORING_FIELD = "id";
     public static final String USER_DTO_IGNORING_FIELD = "id";
-    public static final String[] RENTAL_DTO_IGNORING_FIELDS = new String[] {
+    /*public static final String[] RENTAL_DTO_IGNORING_FIELDS = new String[] {
             "id", "userId", "carDto.id"
-    };
+    };*/
 
     public static final Pageable CAR_PAGEABLE = PageRequest.of(
             0,
             10,
             Sort.by("dailyFee").ascending()
     );
-    public static final Pageable RENTAL_PAGEABLE = PageRequest.of(
+    /*public static final Pageable RENTAL_PAGEABLE = PageRequest.of(
             0,
             10,
             Sort.by("returnDate").descending()
-    );
+    );*/
 
     protected TestDataUtil() {
     }
@@ -309,7 +300,7 @@ public class TestDataUtil {
         );
     }
 
-    public static RentalResponseDto createTestRentalResponseDto(Long id,
+    /*public static RentalResponseDto createTestRentalResponseDto(Long id,
                                                                 LocalDate actualReturnDate) {
         RentalResponseDto dto = new RentalResponseDto();
         dto.setId(id);
@@ -435,5 +426,5 @@ public class TestDataUtil {
                 LocalDate.parse(rentalDto.getReturnDate()),
                 rentalDto.getCarDto().getId()
         );
-    }
+    }*/
 }
