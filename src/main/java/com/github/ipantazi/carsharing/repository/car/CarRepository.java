@@ -2,6 +2,7 @@ package com.github.ipantazi.carsharing.repository.car;
 
 import com.github.ipantazi.carsharing.model.Car;
 import jakarta.persistence.LockModeType;
+import java.math.BigDecimal;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -24,4 +25,9 @@ public interface CarRepository extends JpaRepository<Car, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT c FROM Car c WHERE c.id = :id")
     Optional<Car> findByIdForUpdate(Long id);
+
+    @Query("SELECT c.dailyFee FROM Car c WHERE c.id = :carId")
+    Optional<BigDecimal> findDailyFeeByCarId(@Param("carId") Long carId);
+
+    boolean existsCarByIdAndInventoryIsGreaterThan(Long id, int inventory);
 }
