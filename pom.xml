@@ -41,7 +41,7 @@
         <org.jacoco.version>0.8.13</org.jacoco.version>
         <maven-checkstyle.version>3.6.0</maven-checkstyle.version>
         <stripe-java.version>29.2.0</stripe-java.version>
-        <byte-buddy-agent.version>1.17.6</byte-buddy-agent.version>
+        <mockito-inline.version>5.2.0</mockito-inline.version>
         <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
     </properties>
     <dependencyManagement>
@@ -145,9 +145,9 @@
             <version>${stripe-java.version}</version>
         </dependency>
         <dependency>
-            <groupId>net.bytebuddy</groupId>
-            <artifactId>byte-buddy-agent</artifactId>
-            <version>${byte-buddy-agent.version}</version>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-inline</artifactId>
+            <version>${mockito-inline.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -231,11 +231,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
-                <configuration>
-                    <argLine>
-                            -javaagent:"${settings.localRepository}/net/bytebuddy/byte-buddy-agent/${byte-buddy-agent.version}/byte-buddy-agent-${byte-buddy-agent.version}.jar"
-                    </argLine>
-                </configuration>
             </plugin>
         </plugins>
     </build>
