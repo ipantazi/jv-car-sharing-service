@@ -1,5 +1,9 @@
 package com.github.ipantazi.carsharing.exception;
 
+import com.stripe.exception.SignatureVerificationException;
+import com.stripe.exception.StripeException;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
