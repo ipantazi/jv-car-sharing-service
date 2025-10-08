@@ -35,6 +35,12 @@ public class CustomGlobalExceptionHandler extends ResponseEntityExceptionHandler
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Object> handleIllegalStateException(IllegalStateException ex) {
+        Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(UnsupportedOperationException.class)
     public ResponseEntity<Object> handleUnsupportedOperationException(
             UnsupportedOperationException ex) {
@@ -94,6 +100,78 @@ public class CustomGlobalExceptionHandler extends ResponseEntityExceptionHandler
     public ResponseEntity<Object> handleCarNotAvailableException(
             CarNotAvailableException ex) {
         Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(InvalidRentalDatesException.class)
+    public ResponseEntity<Object> handleInvalidRentalDatesException(
+            InvalidRentalDatesException ex) {
+        Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(PaymentAlreadyPaidException.class)
+    public ResponseEntity<Object> handlePaymentAlreadyPaidException(
+            PaymentAlreadyPaidException ex) {
+        Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.CONFLICT);
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(PendingPaymentsExistException.class)
+    public ResponseEntity<Object> handlePendingPaymentsExistException(
+            PendingPaymentsExistException ex) {
+        Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.CONFLICT);
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(InvalidPaymentStatusException.class)
+    public ResponseEntity<Object> handleInvalidPaymentStatusException(
+            InvalidPaymentStatusException ex) {
+        Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.CONFLICT);
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(StripeSessionExpiredException.class)
+    public ResponseEntity<Object> handleStripeSessionExpiredException(
+            StripeSessionExpiredException ex) {
+        Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.GONE);
+        return new ResponseEntity<>(body, HttpStatus.GONE);
+    }
+
+    @ExceptionHandler(SignatureVerificationException.class)
+    public ResponseEntity<Object> handleSignatureVerificationException(
+            SignatureVerificationException ex) {
+        Map<String, Object> body = bodyBuilder(
+                "Invalid Stripe signature",
+                HttpStatus.UNAUTHORIZED
+        );
+        return new ResponseEntity<>(body, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(StripeException.class)
+    public ResponseEntity<Object> handleStripeException(StripeException ex) {
+        Map<String, Object> body = bodyBuilder(
+                "Stripe error: " + ex.getMessage(),
+                HttpStatus.BAD_REQUEST
+        );
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(InvalidStripePayloadException.class)
+    public ResponseEntity<Object> handleInvalidStripePayloadException(
+            InvalidStripePayloadException ex) {
+        Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Object> handleConstraintViolation(ConstraintViolationException ex) {
+        String message = ex.getConstraintViolations().stream()
+                .map(ConstraintViolation::getMessage)
+                .findFirst()
+                .orElse("Validation failed");
+
+        Map<String, Object> body = bodyBuilder(message, HttpStatus.BAD_REQUEST);
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
