@@ -52,7 +52,7 @@ public class TestDataUtil {
     public static final String CAR_BRAND = "Test Brand ";
     public static final String CAR_TYPE = "UNIVERSAL";
     public static final int CAR_INVENTORY = 5;
-    public static final BigDecimal CAR_DAILY_FEE = new BigDecimal("100.0")
+    public static final BigDecimal CAR_DAILY_FEE = new BigDecimal("101.0")
             .setScale(1, RoundingMode.HALF_UP);
 
     public static final String EMAIL_DOMAIN = "@example.com";
