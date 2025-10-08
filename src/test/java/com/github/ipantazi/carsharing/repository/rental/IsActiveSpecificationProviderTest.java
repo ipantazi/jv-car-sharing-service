@@ -96,8 +96,7 @@ public class IsActiveSpecificationProviderTest {
         Specification<Rental> actualSpecification = provider.getSpecification("NOT BOOLEAN");
 
         // Then
-        assertThat(actualSpecification).isNotNull();
-        assertThat(actualSpecification).isEqualTo(Specification.where(null));
+        assertThat(actualSpecification).isNull();
         verifyNoInteractions(criteriaBuilder, root);
     }
 
@@ -108,8 +107,7 @@ public class IsActiveSpecificationProviderTest {
         Specification<Rental> actualSpecification = provider.getSpecification(null);
 
         // Then
-        assertThat(actualSpecification).isNotNull();
-        assertThat(actualSpecification).isEqualTo(Specification.where(null));
+        assertThat(actualSpecification).isNull();
         verifyNoInteractions(criteriaBuilder, root);
     }
 }

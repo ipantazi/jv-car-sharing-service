@@ -19,6 +19,6 @@ public class UserIdSpecificationProvider implements SpecificationProvider<Rental
                     root.get(this.getKey()), userId
             ));
         }
-        return Specification.where(null);
+        return null;
     }
 }
