@@ -238,7 +238,8 @@ public class RentalControllerTest {
                 result,
                 objectMapper,
                 BAD_REQUEST,
-                "Return date must be no earlier than " + MIN_RENTAL_DAYS + " day in the future"
+                "Return date must be no earlier than %d day in the future"
+                        .formatted(MIN_RENTAL_DAYS)
         );
     }
 
@@ -267,7 +268,7 @@ public class RentalControllerTest {
                 result,
                 objectMapper,
                 BAD_REQUEST,
-                "Maximum rental period is " + MAX_RENTAL_DAYS + " days."
+                "Maximum rental period is %d days.".formatted(MAX_RENTAL_DAYS)
         );
     }
 
@@ -300,7 +301,7 @@ public class RentalControllerTest {
                 result,
                 objectMapper,
                 BAD_REQUEST,
-                "Car with id: " + EXISTING_CAR_ID + " is not available."
+                "Car with id: %d is not available for rental.".formatted(rentalRequestDto.carId())
         );
     }
 
@@ -320,7 +321,7 @@ public class RentalControllerTest {
         MvcResult result = createJsonMvcResult(
                 mockMvc,
                 post(URL_RENTALS),
-                status().isNotFound(),
+                status().isBadRequest(),
                 jsonRequest
         );
 
@@ -328,8 +329,9 @@ public class RentalControllerTest {
         assertValidationError(
                 result,
                 objectMapper,
-                NOT_FOUND,
-                "Car not found with id: " + NOT_EXISTING_CAR_ID
+                BAD_REQUEST,
+                "Car with id: %d is not available for rental."
+                        .formatted(rentalRequestDto.carId())
         );
     }
 
@@ -431,13 +433,13 @@ public class RentalControllerTest {
         List<RentalResponseDto> expectedResponseDtoList = List.of(responseDto);
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
-                                .param("is_active", String.valueOf(isActive))
-                                .param("user_id", String.valueOf(EXISTING_USER_ID))
-                )
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+                        .param("is_active", String.valueOf(isActive))
+                        .param("user_id", String.valueOf(EXISTING_USER_ID)),
+                status().isOk()
+        );
 
         // Then
         List<RentalResponseDto> actualResponseDtoList = parsePageContent(
@@ -478,13 +480,13 @@ public class RentalControllerTest {
         List<RentalResponseDto> expectedResponseDtoList = List.of(responseDto);
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("is_active", String.valueOf(isActive))
-                                .param("user_id", String.valueOf(EXISTING_USER_ID))
-                )
-                .andExpect(status().isOk())
-                .andReturn();
+                                .param("user_id", String.valueOf(EXISTING_USER_ID)),
+                status().isOk()
+        );
 
         // Then
         List<RentalResponseDto> actualResponseDtoList = parsePageContent(
@@ -522,13 +524,13 @@ public class RentalControllerTest {
         List<RentalResponseDto> expectedResponseDtoList = List.of(responseDto);
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("is_active", String.valueOf(isActive))
-                                .param("user_id", String.valueOf(EXISTING_ID_ANOTHER_USER))
-                )
-                .andExpect(status().isOk())
-                .andReturn();
+                                .param("user_id", String.valueOf(EXISTING_ID_ANOTHER_USER)),
+                status().isOk()
+        );
 
         // Then
         List<RentalResponseDto> actualResponseDtoList = parsePageContent(
@@ -560,13 +562,13 @@ public class RentalControllerTest {
         Boolean isActive = true;
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("is_active", String.valueOf(isActive))
-                                .param("user_id", String.valueOf(EXISTING_USER_ID))
-                )
-                .andExpect(status().isUnauthorized())
-                .andReturn();
+                                .param("user_id", String.valueOf(EXISTING_USER_ID)),
+                status().isUnauthorized()
+        );
 
         // Then
         assertThat(result.getResponse().getStatus()).isEqualTo(UNAUTHORIZED);
@@ -579,10 +581,11 @@ public class RentalControllerTest {
         authenticateTestUser(EXISTING_RENTAL_ID_ANOTHER_USER, User.Role.MANAGER);
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE))
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE),
+                status().isOk()
+        );
 
         // Then
         List<RentalResponseDto> actualResponseDtoList = parsePageContent(
@@ -608,13 +611,13 @@ public class RentalControllerTest {
         List<RentalResponseDto> expectedResponseDtoList = List.of(responseDto);
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("is_active", String.valueOf(isActive))
-                                .param("user_id", String.valueOf(EXISTING_USER_ID))
-                )
-                .andExpect(status().isOk())
-                .andReturn();
+                                .param("user_id", String.valueOf(EXISTING_USER_ID)),
+                status().isOk()
+        );
 
         // Then
         List<RentalResponseDto> actualResponseDtoList = parsePageContent(
@@ -645,13 +648,13 @@ public class RentalControllerTest {
         Boolean isActive = true;
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("is_active", String.valueOf(isActive))
-                                .param("user_id", String.valueOf(NOT_EXISTING_USER_ID))
-                )
-                .andExpect(status().isNotFound())
-                .andReturn();
+                                .param("user_id", String.valueOf(NOT_EXISTING_USER_ID)),
+                status().isNotFound()
+        );
 
         // Then
         assertValidationError(
@@ -671,13 +674,13 @@ public class RentalControllerTest {
         Boolean isActive = true;
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("is_active", String.valueOf(isActive))
-                                .param("user_id", String.valueOf(NEGATIVE_ID))
-                )
-                .andExpect(status().isBadRequest())
-                .andReturn();
+                                .param("user_id", String.valueOf(NEGATIVE_ID)),
+                status().isBadRequest()
+        );
 
         // Then
         assertValidationErrorList(
@@ -693,13 +696,13 @@ public class RentalControllerTest {
         authenticateTestUser(EXISTING_RENTAL_ID_ANOTHER_USER, User.Role.MANAGER);
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("is_active", "INVALID")
-                                .param("user_id", "INVALID")
-                )
-                .andExpect(status().isBadRequest())
-                .andReturn();
+                                .param("user_id", "INVALID"),
+                status().isBadRequest()
+        );
 
         // Then
         assertValidationErrorList(
@@ -722,13 +725,13 @@ public class RentalControllerTest {
         authenticateTestUser(EXISTING_RENTAL_ID_ANOTHER_USER, User.Role.MANAGER);
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("INVALID", String.valueOf(true))
-                                .param("INVALID", String.valueOf(EXISTING_USER_ID))
-                )
-                .andExpect(status().isOk())
-                .andReturn();
+                                .param("INVALID", String.valueOf(EXISTING_USER_ID)),
+                status().isOk()
+        );
 
         // Then
         List<RentalResponseDto> actualResponseDtoList = parsePageContent(
@@ -753,9 +756,11 @@ public class RentalControllerTest {
         authenticateTestUser(EXISTING_RENTAL_ID_ANOTHER_USER, User.Role.MANAGER);
 
         // When
-        MvcResult result = mockMvc.perform(createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE))
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE),
+                status().isOk()
+        );
 
         // Then
         List<RentalResponseDto> actualResponseDtoList = parsePageContent(
