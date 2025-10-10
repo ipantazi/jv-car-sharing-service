@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/changes/05-update-user-fields.yaml
   - include:
       file: db/changelog/changes/06-create-rental-table.yaml
+  - include:
+      file: db/changelog/changes/07-create-payments-table.yaml
