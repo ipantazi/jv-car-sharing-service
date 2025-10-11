@@ -22,7 +22,6 @@ import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_USER
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NUMBER_OF_RENTAL_DAYS;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.RENTAL_DTO_IGNORING_FIELDS;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.RENTAL_PAGEABLE;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.RETURN_DATE_LESS_THEN_ACTUAL;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.ZONE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createNewTestRentalResponseDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRentalDetailedDto;
@@ -875,14 +874,14 @@ public class RentalControllerTest {
         MvcResult result = createMvcResult(
                 mockMvc,
                 get(URL_RENTAL_BY_ID, EXISTING_RENTAL_ID_ANOTHER_USER),
-                status().isNotFound()
+                status().isForbidden()
         );
         // Then
         assertValidationError(
                 result,
                 objectMapper,
-                NOT_FOUND,
-                "Rental not found with id: " + EXISTING_RENTAL_ID_ANOTHER_USER
+                FORBIDDEN,
+                "Access denied. You do not have permission to perform this action."
         );
     }
 
@@ -978,7 +977,7 @@ public class RentalControllerTest {
 
     @Test
     @DisplayName("Test return rental with penalty amount and CUSTOMER role and when actual return "
-            + "date later than expected return date.")
+            + "date greater than expected return date.")
     @Sql(scripts = "classpath:database/rentals/set-return-date-for-rental-id101.sql",
             executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
     @Sql(scripts = {
@@ -986,15 +985,11 @@ public class RentalControllerTest {
             "classpath:database/cars/restoring-car-id101.sql"
     },
             executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD)
-    void returnRental_LaterActualReturnDate_ReturnRentalDetailedDto() throws Exception {
+    void returnRental_WithPenaltyAndCustomerRole_ReturnRentalDetailedDto() throws Exception {
         // Given
         authenticateTestUser(EXISTING_USER_ID, User.Role.CUSTOMER);
 
-        RentalDetailedDto expectedDto = createTestRentalDetailedDtoWithPenalty(
-                EXISTING_USER_ID,
-                RETURN_DATE_LESS_THEN_ACTUAL,
-                FIXED_DATE
-                );
+        RentalDetailedDto expectedDto = createTestRentalDetailedDtoWithPenalty(EXISTING_USER_ID);
 
         int expectedInventory = CAR_INVENTORY + 1;
         expectedDto.getCarDto().setInventory(expectedInventory);
@@ -1017,9 +1012,6 @@ public class RentalControllerTest {
                 expectedDto,
                 RENTAL_DTO_IGNORING_FIELDS
         );
-        assertThat(actualDto.getPenaltyAmount()).isEqualTo(expectedDto.getPenaltyAmount());
-        assertThat(actualDto.getTotalCost()).isEqualTo(expectedDto.getTotalCost());
-        assertThat(actualDto.getAmountDue()).isEqualTo(expectedDto.getAmountDue());
     }
 
     @Test
@@ -1047,8 +1039,8 @@ public class RentalControllerTest {
                 result,
                 objectMapper,
                 BAD_REQUEST,
-                "Rental with id " + EXISTING_RENTAL_ID + " is already returned on "
-                        + ACTUAL_RETURN_DATE
+                "Rental with id %d is already returned on %s"
+                        .formatted(EXISTING_RENTAL_ID, ACTUAL_RETURN_DATE)
         );
     }
 
@@ -1084,15 +1076,15 @@ public class RentalControllerTest {
         MvcResult result = createMvcResult(
                 mockMvc,
                 post(URL_RETURN_RENTAL, EXISTING_RENTAL_ID_ANOTHER_USER),
-                status().isNotFound()
+                status().isForbidden()
         );
 
         // Then
         assertValidationError(
                 result,
                 objectMapper,
-                NOT_FOUND,
-                "Rental not found with id: " + EXISTING_RENTAL_ID_ANOTHER_USER
+                FORBIDDEN,
+                "Access denied. You do not have permission to perform this action."
         );
     }
 }

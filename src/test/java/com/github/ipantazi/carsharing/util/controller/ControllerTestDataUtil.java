@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 
 public class ControllerTestDataUtil extends TestDataUtil {
+    public static final int OK = HttpStatus.OK.value();
     public static final int NO_CONTENT = HttpStatus.NO_CONTENT.value();
     public static final int BAD_REQUEST = HttpStatus.BAD_REQUEST.value();
     public static final int NOT_FOUND = HttpStatus.NOT_FOUND.value();
@@ -12,6 +13,7 @@ public class ControllerTestDataUtil extends TestDataUtil {
     public static final int UNAUTHORIZED = HttpStatus.UNAUTHORIZED.value();
     public static final int FORBIDDEN = HttpStatus.FORBIDDEN.value();
     public static final int CONFLICT = HttpStatus.CONFLICT.value();
+    public static final int INTERNAL_SERVER_ERROR = HttpStatus.INTERNAL_SERVER_ERROR.value();
 
     public static final String URL_CARS = "/cars";
     public static final String URL_CARS_EXISTING_CAR_ID = "/cars/" + EXISTING_CAR_ID;
@@ -27,6 +29,20 @@ public class ControllerTestDataUtil extends TestDataUtil {
     public static final String URL_RENTALS = "/rentals";
     public static final String URL_RENTAL_BY_ID = "/rentals/{id}";
     public static final String URL_RETURN_RENTAL = "/rentals/{id}/return";
+
+    public static final String URL_PAYMENTS = "/payments";
+    public static final String URL_PAYMENTS_SUCCESS = "/payments/success";
+    public static final String URL_PAYMENTS_CANCEL = "/payments/cancel";
+    public static final String URL_PAYMENTS_RENEW = "/payments/renew";
+
+    public static final String URL_WEBHOOK = "/webhook/stripe";
+
+    public static final String PAYMENT_PENDING_SUCCESS_MESSAGE = "Thank you for your payment. "
+            + "Payment is being processed.";
+    public static final String PAYMENT_PAID_SUCCESS_MESSAGE = "Thank you for your payment. "
+            + "Payment successful.";
+    public static final String PAYMENT_CANCEL_MESSAGE = "Payment canceled. You can pay later, "
+            + "but the session is only valid for 24 hours.";
 
     public static final List<String> EXPECTED_SAVE_CAR_ERRORS = List.of(
             "Field 'brand': Invalid brand. Brand must be between 3 and 50 characters.",
