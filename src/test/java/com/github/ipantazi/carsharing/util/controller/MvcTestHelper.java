@@ -1,5 +1,7 @@
 package com.github.ipantazi.carsharing.util.controller;
 
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -26,6 +28,21 @@ public class MvcTestHelper {
                                       ResultMatcher expectedStatus) throws Exception {
         return mockMvc.perform(requestBuilder)
                 .andExpect(expectedStatus)
+                .andReturn();
+    }
+
+    public static MvcResult createWebhookMvcResult(MockMvc mockMvc,
+                                             MockHttpServletRequestBuilder requestBuilder,
+                                             ResultMatcher expectedStatus,
+                                             String payload,
+                                             String stripeSignature,
+                                             String contentType) throws Exception {
+        return mockMvc.perform(requestBuilder
+                        .content(payload)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Stripe-Signature", stripeSignature))
+                .andExpect(expectedStatus)
+                .andExpect(content().string(contentType))
                 .andReturn();
     }
 }
