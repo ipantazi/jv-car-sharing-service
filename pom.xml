@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.5</version>
+        <version>3.5.3</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.github.ipantazi</groupId>
@@ -40,6 +40,9 @@
         <testcontainers.version>1.21.0</testcontainers.version>
         <org.jacoco.version>0.8.13</org.jacoco.version>
         <maven-checkstyle.version>3.6.0</maven-checkstyle.version>
+        <stripe-java.version>29.2.0</stripe-java.version>
+        <mockito-inline.version>5.2.0</mockito-inline.version>
+        <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -136,6 +139,17 @@
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${webmvc-ui.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
+            <version>${stripe-java.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-inline</artifactId>
+            <version>${mockito-inline.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -212,6 +226,11 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
             </plugin>
         </plugins>
     </build>

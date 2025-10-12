@@ -6,6 +6,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -17,11 +22,14 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build with Maven (tests + JaCoCo)
-        run: mvn --batch-mode --update-snapshots verify
+      - name: Make Maven wrapper executable
+        run: chmod +x mvnw
+
+      - name: Build, test and generate coverage
+        run: ./mvnw --batch-mode verify
 
       - name: Run Checkstyle
-        run: mvn --batch-mode checkstyle:check
+        run: ./mvnw --batch-mode checkstyle:check
 
       - name: Upload JaCoCo HTML report
         uses: actions/upload-artifact@v4.6.2

@@ -10,8 +10,10 @@ import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
 import com.github.ipantazi.carsharing.exception.InvalidOldPasswordException;
 import com.github.ipantazi.carsharing.exception.RegistrationException;
 import com.github.ipantazi.carsharing.mapper.UserMapper;
+import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.repository.user.UserRepository;
+import com.github.ipantazi.carsharing.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -74,21 +76,39 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public boolean isManager(Long userId) {
-        User user = getUserById(userId);
-        return user.getRole().equals(User.Role.MANAGER);
-    }
-
-    @Override
-    public boolean validateUserExistsOrThrow(Long userId) { // Test
+    public boolean validateUserExistsOrThrow(Long userId) {
         if (userRepository.existsSoftDeletedUserById(userId) == 1L) {
-            throw new IllegalArgumentException("User with id: " + userId
-                    + " was previously deleted.");
+            throw new IllegalArgumentException("User with id: %d was previously deleted."
+                    .formatted(userId));
         }
         if (!userRepository.existsById(userId)) {
             throw new EntityNotFoundException("Can't find user with id: " + userId);
         }
         return true;
+    }
+
+    @Override
+    public Long resolveUserIdForAccess(CustomUserDetails userDetails, Long requestedUserId) {
+        boolean isManager = userDetails.getRole().equals(User.Role.MANAGER);
+
+        if (isManager && requestedUserId != null) {
+            validateUserExistsOrThrow(requestedUserId);
+            return requestedUserId;
+        } else if (!isManager) {
+            return userDetails.getId();
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public boolean canAccessRental(Long userId, Rental rental) {
+        Long rentalUserId = rental.getUserId();
+        return isManager(userId) || userId.equals(rentalUserId);
+    }
+
+    private boolean isManager(Long userId) {
+        return getUserById(userId).getRole().equals(User.Role.MANAGER);
     }
 
     private User getUserById(Long userId) {

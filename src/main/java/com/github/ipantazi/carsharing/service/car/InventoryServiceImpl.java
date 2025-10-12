@@ -15,7 +15,7 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public Car adjustInventory(Long carId, int quantity, OperationType operation) { //Test
+    public Car adjustInventory(Long carId, int quantity, OperationType operation) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Invalid quantity. Quantity should be positive.");
         }

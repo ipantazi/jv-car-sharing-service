@@ -4,7 +4,6 @@ import com.github.ipantazi.carsharing.dto.rental.RentalDetailedDto;
 import com.github.ipantazi.carsharing.dto.rental.RentalRequestDto;
 import com.github.ipantazi.carsharing.dto.rental.RentalRequestFilterDto;
 import com.github.ipantazi.carsharing.dto.rental.RentalResponseDto;
-import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.security.CustomUserDetails;
 import com.github.ipantazi.carsharing.service.rental.RentalService;
 import com.github.ipantazi.carsharing.service.user.UserService;
@@ -59,18 +58,7 @@ public class RentalController {
                                               @Valid RentalRequestFilterDto filter,
                                               @ParameterObject Pageable pageable) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        boolean isManager = userDetails.getRole().equals(User.Role.MANAGER);
-
-        Long actualUserId;
-        if (isManager && filter.user_id() != null) {
-            userService.validateUserExistsOrThrow(filter.user_id());
-            actualUserId = filter.user_id();
-        } else if (!isManager) {
-            actualUserId = userDetails.getId();
-        } else {
-            actualUserId = null;
-        }
-
+        Long actualUserId = userService.resolveUserIdForAccess(userDetails, filter.user_id());
         return rentalService.getRentalsByFilter(actualUserId, filter.is_active(), pageable);
     }
 
@@ -84,7 +72,7 @@ public class RentalController {
     public RentalDetailedDto getRentalById(Authentication authentication,
                                            @PathVariable Long id) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        return rentalService.getRentalById(userDetails.getId(), id);
+        return rentalService.getRental(userDetails.getId(), id);
     }
 
     @PreAuthorize("isAuthenticated()")

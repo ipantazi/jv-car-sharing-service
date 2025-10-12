@@ -22,7 +22,6 @@ import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_USER
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NUMBER_OF_RENTAL_DAYS;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.RENTAL_DTO_IGNORING_FIELDS;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.RENTAL_PAGEABLE;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.RETURN_DATE_LESS_THEN_ACTUAL;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.ZONE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createNewTestRentalResponseDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRentalDetailedDto;
@@ -238,7 +237,8 @@ public class RentalControllerTest {
                 result,
                 objectMapper,
                 BAD_REQUEST,
-                "Return date must be no earlier than " + MIN_RENTAL_DAYS + " day in the future"
+                "Return date must be no earlier than %d day in the future"
+                        .formatted(MIN_RENTAL_DAYS)
         );
     }
 
@@ -267,7 +267,7 @@ public class RentalControllerTest {
                 result,
                 objectMapper,
                 BAD_REQUEST,
-                "Maximum rental period is " + MAX_RENTAL_DAYS + " days."
+                "Maximum rental period is %d days.".formatted(MAX_RENTAL_DAYS)
         );
     }
 
@@ -300,7 +300,7 @@ public class RentalControllerTest {
                 result,
                 objectMapper,
                 BAD_REQUEST,
-                "Car with id: " + EXISTING_CAR_ID + " is not available."
+                "Car with id: %d is not available for rental.".formatted(rentalRequestDto.carId())
         );
     }
 
@@ -320,7 +320,7 @@ public class RentalControllerTest {
         MvcResult result = createJsonMvcResult(
                 mockMvc,
                 post(URL_RENTALS),
-                status().isNotFound(),
+                status().isBadRequest(),
                 jsonRequest
         );
 
@@ -328,8 +328,9 @@ public class RentalControllerTest {
         assertValidationError(
                 result,
                 objectMapper,
-                NOT_FOUND,
-                "Car not found with id: " + NOT_EXISTING_CAR_ID
+                BAD_REQUEST,
+                "Car with id: %d is not available for rental."
+                        .formatted(rentalRequestDto.carId())
         );
     }
 
@@ -431,13 +432,13 @@ public class RentalControllerTest {
         List<RentalResponseDto> expectedResponseDtoList = List.of(responseDto);
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
-                                .param("is_active", String.valueOf(isActive))
-                                .param("user_id", String.valueOf(EXISTING_USER_ID))
-                )
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+                        .param("is_active", String.valueOf(isActive))
+                        .param("user_id", String.valueOf(EXISTING_USER_ID)),
+                status().isOk()
+        );
 
         // Then
         List<RentalResponseDto> actualResponseDtoList = parsePageContent(
@@ -478,13 +479,13 @@ public class RentalControllerTest {
         List<RentalResponseDto> expectedResponseDtoList = List.of(responseDto);
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("is_active", String.valueOf(isActive))
-                                .param("user_id", String.valueOf(EXISTING_USER_ID))
-                )
-                .andExpect(status().isOk())
-                .andReturn();
+                                .param("user_id", String.valueOf(EXISTING_USER_ID)),
+                status().isOk()
+        );
 
         // Then
         List<RentalResponseDto> actualResponseDtoList = parsePageContent(
@@ -522,13 +523,13 @@ public class RentalControllerTest {
         List<RentalResponseDto> expectedResponseDtoList = List.of(responseDto);
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("is_active", String.valueOf(isActive))
-                                .param("user_id", String.valueOf(EXISTING_ID_ANOTHER_USER))
-                )
-                .andExpect(status().isOk())
-                .andReturn();
+                                .param("user_id", String.valueOf(EXISTING_ID_ANOTHER_USER)),
+                status().isOk()
+        );
 
         // Then
         List<RentalResponseDto> actualResponseDtoList = parsePageContent(
@@ -560,13 +561,13 @@ public class RentalControllerTest {
         Boolean isActive = true;
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("is_active", String.valueOf(isActive))
-                                .param("user_id", String.valueOf(EXISTING_USER_ID))
-                )
-                .andExpect(status().isUnauthorized())
-                .andReturn();
+                                .param("user_id", String.valueOf(EXISTING_USER_ID)),
+                status().isUnauthorized()
+        );
 
         // Then
         assertThat(result.getResponse().getStatus()).isEqualTo(UNAUTHORIZED);
@@ -579,10 +580,11 @@ public class RentalControllerTest {
         authenticateTestUser(EXISTING_RENTAL_ID_ANOTHER_USER, User.Role.MANAGER);
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE))
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE),
+                status().isOk()
+        );
 
         // Then
         List<RentalResponseDto> actualResponseDtoList = parsePageContent(
@@ -608,13 +610,13 @@ public class RentalControllerTest {
         List<RentalResponseDto> expectedResponseDtoList = List.of(responseDto);
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("is_active", String.valueOf(isActive))
-                                .param("user_id", String.valueOf(EXISTING_USER_ID))
-                )
-                .andExpect(status().isOk())
-                .andReturn();
+                                .param("user_id", String.valueOf(EXISTING_USER_ID)),
+                status().isOk()
+        );
 
         // Then
         List<RentalResponseDto> actualResponseDtoList = parsePageContent(
@@ -645,13 +647,13 @@ public class RentalControllerTest {
         Boolean isActive = true;
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("is_active", String.valueOf(isActive))
-                                .param("user_id", String.valueOf(NOT_EXISTING_USER_ID))
-                )
-                .andExpect(status().isNotFound())
-                .andReturn();
+                                .param("user_id", String.valueOf(NOT_EXISTING_USER_ID)),
+                status().isNotFound()
+        );
 
         // Then
         assertValidationError(
@@ -671,19 +673,19 @@ public class RentalControllerTest {
         Boolean isActive = true;
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("is_active", String.valueOf(isActive))
-                                .param("user_id", String.valueOf(NEGATIVE_ID))
-                )
-                .andExpect(status().isBadRequest())
-                .andReturn();
+                                .param("user_id", String.valueOf(NEGATIVE_ID)),
+                status().isBadRequest()
+        );
 
         // Then
         assertValidationErrorList(
                 result,
                 objectMapper,
-                List.of("Field 'user_id': Invalid user id. Size should be greater than 0"));
+                List.of("Field 'user_id': Invalid user id. User id should be greater than 0"));
     }
 
     @Test
@@ -693,13 +695,13 @@ public class RentalControllerTest {
         authenticateTestUser(EXISTING_RENTAL_ID_ANOTHER_USER, User.Role.MANAGER);
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("is_active", "INVALID")
-                                .param("user_id", "INVALID")
-                )
-                .andExpect(status().isBadRequest())
-                .andReturn();
+                                .param("user_id", "INVALID"),
+                status().isBadRequest()
+        );
 
         // Then
         assertValidationErrorList(
@@ -722,13 +724,13 @@ public class RentalControllerTest {
         authenticateTestUser(EXISTING_RENTAL_ID_ANOTHER_USER, User.Role.MANAGER);
 
         // When
-        MvcResult result = mockMvc.perform(
-                        createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE)
                                 .param("INVALID", String.valueOf(true))
-                                .param("INVALID", String.valueOf(EXISTING_USER_ID))
-                )
-                .andExpect(status().isOk())
-                .andReturn();
+                                .param("INVALID", String.valueOf(EXISTING_USER_ID)),
+                status().isOk()
+        );
 
         // Then
         List<RentalResponseDto> actualResponseDtoList = parsePageContent(
@@ -753,9 +755,11 @@ public class RentalControllerTest {
         authenticateTestUser(EXISTING_RENTAL_ID_ANOTHER_USER, User.Role.MANAGER);
 
         // When
-        MvcResult result = mockMvc.perform(createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE))
-                .andExpect(status().isOk())
-                .andReturn();
+        MvcResult result = createMvcResult(
+                mockMvc,
+                createRequestWithPageable(URL_RENTALS, RENTAL_PAGEABLE),
+                status().isOk()
+        );
 
         // Then
         List<RentalResponseDto> actualResponseDtoList = parsePageContent(
@@ -870,14 +874,14 @@ public class RentalControllerTest {
         MvcResult result = createMvcResult(
                 mockMvc,
                 get(URL_RENTAL_BY_ID, EXISTING_RENTAL_ID_ANOTHER_USER),
-                status().isNotFound()
+                status().isForbidden()
         );
         // Then
         assertValidationError(
                 result,
                 objectMapper,
-                NOT_FOUND,
-                "Rental not found with id: " + EXISTING_RENTAL_ID_ANOTHER_USER
+                FORBIDDEN,
+                "Access denied. You do not have permission to perform this action."
         );
     }
 
@@ -973,7 +977,7 @@ public class RentalControllerTest {
 
     @Test
     @DisplayName("Test return rental with penalty amount and CUSTOMER role and when actual return "
-            + "date later than expected return date.")
+            + "date greater than expected return date.")
     @Sql(scripts = "classpath:database/rentals/set-return-date-for-rental-id101.sql",
             executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
     @Sql(scripts = {
@@ -981,15 +985,11 @@ public class RentalControllerTest {
             "classpath:database/cars/restoring-car-id101.sql"
     },
             executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD)
-    void returnRental_LaterActualReturnDate_ReturnRentalDetailedDto() throws Exception {
+    void returnRental_WithPenaltyAndCustomerRole_ReturnRentalDetailedDto() throws Exception {
         // Given
         authenticateTestUser(EXISTING_USER_ID, User.Role.CUSTOMER);
 
-        RentalDetailedDto expectedDto = createTestRentalDetailedDtoWithPenalty(
-                EXISTING_USER_ID,
-                RETURN_DATE_LESS_THEN_ACTUAL,
-                FIXED_DATE
-                );
+        RentalDetailedDto expectedDto = createTestRentalDetailedDtoWithPenalty(EXISTING_USER_ID);
 
         int expectedInventory = CAR_INVENTORY + 1;
         expectedDto.getCarDto().setInventory(expectedInventory);
@@ -1012,9 +1012,6 @@ public class RentalControllerTest {
                 expectedDto,
                 RENTAL_DTO_IGNORING_FIELDS
         );
-        assertThat(actualDto.getPenaltyAmount()).isEqualTo(expectedDto.getPenaltyAmount());
-        assertThat(actualDto.getTotalCost()).isEqualTo(expectedDto.getTotalCost());
-        assertThat(actualDto.getAmountDue()).isEqualTo(expectedDto.getAmountDue());
     }
 
     @Test
@@ -1042,8 +1039,8 @@ public class RentalControllerTest {
                 result,
                 objectMapper,
                 BAD_REQUEST,
-                "Rental with id " + EXISTING_RENTAL_ID + " is already returned on "
-                        + ACTUAL_RETURN_DATE
+                "Rental with id %d is already returned on %s"
+                        .formatted(EXISTING_RENTAL_ID, ACTUAL_RETURN_DATE)
         );
     }
 
@@ -1079,15 +1076,15 @@ public class RentalControllerTest {
         MvcResult result = createMvcResult(
                 mockMvc,
                 post(URL_RETURN_RENTAL, EXISTING_RENTAL_ID_ANOTHER_USER),
-                status().isNotFound()
+                status().isForbidden()
         );
 
         // Then
         assertValidationError(
                 result,
                 objectMapper,
-                NOT_FOUND,
-                "Rental not found with id: " + EXISTING_RENTAL_ID_ANOTHER_USER
+                FORBIDDEN,
+                "Access denied. You do not have permission to perform this action."
         );
     }
 }

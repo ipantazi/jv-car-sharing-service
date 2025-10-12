@@ -77,9 +77,9 @@ public class CarServiceImpl implements CarService {
 
     @Override
     public void validateCarAvailableForRental(Long carId) {
-        Car car = findCarById(carId);
-        if (car.getInventory() <= 0) {
-            throw new CarNotAvailableException("Car with id: " + carId + " is not available.");
+        if (!carRepository.existsCarByIdAndInventoryIsGreaterThan(carId, 0)) {
+            throw new CarNotAvailableException("Car with id: %d is not available for rental."
+                    .formatted(carId));
         }
     }
 

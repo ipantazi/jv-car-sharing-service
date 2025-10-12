@@ -1,6 +1,7 @@
 package com.github.ipantazi.carsharing.repository.car;
 
 import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_BRAND;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_DAILY_FEE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_IGNORING_FIELDS;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_MODEL;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_CAR_ID;
@@ -11,7 +12,7 @@ import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.ipantazi.carsharing.model.Car;
-import jakarta.persistence.EntityManager;
+import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -30,8 +31,8 @@ import org.springframework.test.context.jdbc.Sql;
 public class CarRepositoryTest {
     @Autowired
     private CarRepository carRepository;
-    @Autowired
-    private EntityManager entityManager;
+    /*@Autowired
+    private EntityManager entityManager;*/
 
     @Test
     @DisplayName("Check for safe deleted car existence by model and brand.")
@@ -75,7 +76,6 @@ public class CarRepositoryTest {
 
         // Then
         assertThat(actualCarOpt).isPresent();
-        Car actualCar = actualCarOpt.get();
         assertObjectsAreEqualIgnoringFields(actualCarOpt.get(), expectedCar, CAR_IGNORING_FIELDS);
     }
 
@@ -88,6 +88,30 @@ public class CarRepositoryTest {
         // Then
         assertThat(actualCarOpt).isEmpty();
     }
+
+    @Test
+    @DisplayName("Find daily fee by existing car ID should return correct value")
+    void findDailyFeeByCarId_ExistingCar_ReturnsDailyFee() {
+        // When
+        Optional<BigDecimal> actualDailyFeeOpt = carRepository.findDailyFeeByCarId(
+                EXISTING_CAR_ID);
+
+        // Then
+        assertThat(actualDailyFeeOpt).isPresent();
+        assertThat(actualDailyFeeOpt.get()).isEqualByComparingTo(CAR_DAILY_FEE);
+    }
+
+    @Test
+    @DisplayName("Find daily fee by not existing car ID should return empty optional")
+    void findDailyFeeByCarId_NotExistingCar_ReturnsEmptyOptional() {
+        // When
+        Optional<BigDecimal> actualDailyFeeOpt = carRepository.findDailyFeeByCarId(
+                NOT_EXISTING_CAR_ID);
+
+        // Then
+        assertThat(actualDailyFeeOpt).isEmpty();
+    }
+
     /*
     @Test
     @DisplayName("Should lock the car row with PESSIMISTIC_WRITE")

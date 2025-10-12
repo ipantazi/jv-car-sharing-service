@@ -1,5 +1,6 @@
 package com.github.ipantazi.carsharing.service.user;
 
+import static com.github.ipantazi.carsharing.util.TestDataUtil.ACTUAL_RETURN_DATE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.B_CRYPT_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_ID_ANOTHER_USER;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_USER_ID;
@@ -11,8 +12,11 @@ import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_NOT_HASHED_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_HASHED_PASSWORD;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.SAFE_DELETED_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.USER_DTO_IGNORING_FIELD;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.createCustomUserDetailsDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestChangePasswordRequestDto;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRental;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUpdateUserDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUser;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserRegistrationRequestDto;
@@ -38,8 +42,10 @@ import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
 import com.github.ipantazi.carsharing.exception.InvalidOldPasswordException;
 import com.github.ipantazi.carsharing.exception.RegistrationException;
 import com.github.ipantazi.carsharing.mapper.UserMapper;
+import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.repository.user.UserRepository;
+import com.github.ipantazi.carsharing.security.CustomUserDetails;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -407,52 +413,6 @@ public class UserServiceTest {
     }
 
     @Test
-    @DisplayName("Test isManager() method when user is MANAGER.")
-    public void isManager_UserIsManager_ReturnsTrue() {
-        //Given
-        User user = createTestUser(EXISTING_ID_ANOTHER_USER);
-        user.setRole(User.Role.MANAGER);
-
-        when(userRepository.findById(EXISTING_ID_ANOTHER_USER)).thenReturn(Optional.of(user));
-
-        // When
-        boolean actual = userService.isManager(EXISTING_ID_ANOTHER_USER);
-
-        // Then
-        assertThat(actual).isTrue();
-        verify(userRepository, times(1)).findById(EXISTING_ID_ANOTHER_USER);
-        verifyNoMoreInteractions(userRepository);
-    }
-
-    @Test
-    @DisplayName("Test isManager() method when user is CUSTOMER.")
-    public void isManager_UserIsCustomer_ReturnsFalse() {
-        //Given
-        User user = createTestUser(EXISTING_USER_ID);
-
-        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(user));
-
-        // When
-        boolean actual = userService.isManager(EXISTING_USER_ID);
-
-        // Then
-        assertThat(actual).isFalse();
-        verify(userRepository, times(1)).findById(EXISTING_USER_ID);
-        verifyNoMoreInteractions(userRepository);
-    }
-
-    @Test
-    @DisplayName("Test isManager when userId not existing")
-    public void isManager_UserIsNotExist_ThrowsException() {
-        // When & Then
-        assertThatThrownBy(() -> userService.isManager(NOT_EXISTING_USER_ID))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessage("User not found with id: " + NOT_EXISTING_USER_ID);
-        verify(userRepository, times(1)).findById(NOT_EXISTING_USER_ID);
-        verifyNoMoreInteractions(userRepository);
-    }
-
-    @Test
     @DisplayName("Test validateUserExistsOrThrow() method with exists userId.")
     public void validateUserExistsOrThrow_ExistsUserId_returnsTrue() {
         // Given
@@ -498,6 +458,193 @@ public class UserServiceTest {
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessage("Can't find user with id: " + EXISTING_USER_ID);
         verify(userRepository, times(1)).existsSoftDeletedUserById(EXISTING_USER_ID);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("""
+            Test resolveUserIdForAccess() method when user is not a MANAGER and ignoring
+             requestedUserId.
+            """)
+    public void resolveUserIdForAccess_NotManager_returnsUserDetailsId() {
+        //Given
+        CustomUserDetails userDetails = createCustomUserDetailsDto(
+                createTestUser(EXISTING_USER_ID),
+                User.Role.CUSTOMER
+        );
+
+        //When
+        Long actualUserId = userService.resolveUserIdForAccess(userDetails, NOT_EXISTING_USER_ID);
+
+        //Then
+        assertThat(actualUserId).isEqualTo(EXISTING_USER_ID);
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("""
+            Test resolveUserIdForAccess() method when user is a MANAGER with existing
+             requestUserId.
+            """)
+    public void resolveUserIdForAccess_ManagerAndExistingRequestUserId_returnsRequestUserId() {
+        //Given
+        CustomUserDetails userDetails = createCustomUserDetailsDto(
+                createTestUser(EXISTING_ID_ANOTHER_USER),
+                User.Role.MANAGER
+        );
+        when(userRepository.existsSoftDeletedUserById(EXISTING_USER_ID)).thenReturn(0L);
+        when(userRepository.existsById(EXISTING_USER_ID)).thenReturn(true);
+
+        //When
+        Long actualUserId = userService.resolveUserIdForAccess(userDetails, EXISTING_USER_ID);
+
+        //Then
+        assertThat(actualUserId).isEqualTo(EXISTING_USER_ID);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("""
+            Test resolveUserIdForAccess() method when user is a MANAGER and requestUserId
+             is null.
+            """)
+    public void resolveUserIdForAccess_ManagerAndNullRequestUserId_returnsNull() {
+        //Given
+        CustomUserDetails userDetails = createCustomUserDetailsDto(
+                createTestUser(EXISTING_ID_ANOTHER_USER),
+                User.Role.MANAGER
+        );
+
+        //When
+        Long actualUserId = userService.resolveUserIdForAccess(userDetails, null);
+
+        //Then
+        assertThat(actualUserId).isNull();
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("""
+            Test resolveUserIdForAccess() method when user is a MANAGER with not existing
+             requestUserId.
+            """)
+    public void resolveUserIdForAccess_ManagerAndNotExistingRequestUserId_ThrowsException() {
+        //Given
+        CustomUserDetails userDetails = createCustomUserDetailsDto(
+                createTestUser(EXISTING_ID_ANOTHER_USER),
+                User.Role.MANAGER
+        );
+        when(userRepository.existsSoftDeletedUserById(NOT_EXISTING_USER_ID)).thenReturn(0L);
+        when(userRepository.existsById(NOT_EXISTING_USER_ID)).thenReturn(false);
+
+        //When & Then
+        assertThatThrownBy(() -> userService.resolveUserIdForAccess(
+                userDetails,
+                NOT_EXISTING_USER_ID
+        ))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("Can't find user with id: " + NOT_EXISTING_USER_ID);
+        verify(userRepository, times(1)).existsSoftDeletedUserById(NOT_EXISTING_USER_ID);
+        verify(userRepository, times(1)).existsById(NOT_EXISTING_USER_ID);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("""
+            Test resolveUserIdForAccess() method when user is a MANAGER with safe deleted
+             requestUserId.
+             """)
+    public void resolveUserIdForAccess_ManagerAndSafeDeletedRequestUserId_ThrowsException() {
+        //Given
+        CustomUserDetails userDetails = createCustomUserDetailsDto(
+                createTestUser(EXISTING_ID_ANOTHER_USER),
+                User.Role.MANAGER
+        );
+        when(userRepository.existsSoftDeletedUserById(SAFE_DELETED_USER_ID)).thenReturn(1L);
+
+        //When & Then
+        assertThatThrownBy(() -> userService.resolveUserIdForAccess(
+                userDetails,
+                SAFE_DELETED_USER_ID
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("User with id: %d was previously deleted."
+                        .formatted(SAFE_DELETED_USER_ID));
+        verify(userRepository, times(1)).existsSoftDeletedUserById(SAFE_DELETED_USER_ID);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("Test canAccessRental() method when user is a MANAGER.")
+    public void canAccessRental_Manager_returnsTrue() {
+        //Given
+        User user = createTestUser(EXISTING_ID_ANOTHER_USER);
+        Rental rental = createTestRental(EXISTING_ID_ANOTHER_USER, ACTUAL_RETURN_DATE);
+
+        when(userRepository.findById(EXISTING_ID_ANOTHER_USER)).thenReturn(Optional.of(user));
+
+        //When
+        boolean actualResult = userService.canAccessRental(EXISTING_ID_ANOTHER_USER, rental);
+
+        //Then
+        assertThat(actualResult).isTrue();
+        verify(userRepository, times(1)).findById(EXISTING_ID_ANOTHER_USER);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("Test canAccessRental() method when user is a CUSTOMER.")
+    public void canAccessRental_Customer_returnsFalse() {
+        //Given
+        User user = createTestUser(EXISTING_USER_ID);
+        Rental rental = createTestRental(EXISTING_USER_ID, ACTUAL_RETURN_DATE);
+
+        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(user));
+
+        //When
+        boolean actualResult = userService.canAccessRental(EXISTING_USER_ID, rental);
+
+        //Then
+        assertThat(actualResult).isTrue();
+        verify(userRepository, times(1)).findById(EXISTING_USER_ID);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("""
+            Test canAccessRental() method when user user is a CASTOMER and has no access to
+             rental.
+            """)
+    public void canAccessRental_CustomerAndNoAccess_returnsFalse() {
+        //Given
+        User user = createTestUser(EXISTING_USER_ID);
+        Rental rental = createTestRental(EXISTING_ID_ANOTHER_USER, ACTUAL_RETURN_DATE);
+
+        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(user));
+
+        //When
+        boolean actualResult = userService.canAccessRental(EXISTING_USER_ID, rental);
+
+        //Then
+        assertThat(actualResult).isFalse();
+        verify(userRepository, times(1)).findById(EXISTING_USER_ID);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("Test canAccessRental() method when user is not found.")
+    public void canAccessRental_UserNotFound_ThrowsException() {
+        //Given
+        Rental rental = createTestRental(EXISTING_USER_ID, ACTUAL_RETURN_DATE);
+
+        when(userRepository.findById(NOT_EXISTING_USER_ID)).thenReturn(Optional.empty());
+
+        //When & Then
+        assertThatThrownBy(() -> userService.canAccessRental(NOT_EXISTING_USER_ID, rental))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("User not found with id: " + NOT_EXISTING_USER_ID);
+
+        verify(userRepository, times(1)).findById(NOT_EXISTING_USER_ID);
         verifyNoMoreInteractions(userRepository);
     }
 }

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -23,19 +24,47 @@ public class TestAssertionsUtil {
         assertThat(actual)
                 .usingRecursiveComparison()
                 .ignoringFields(fieldsToIgnore)
+                .withComparatorForType(
+                        (BigDecimal b1, BigDecimal b2) -> {
+                            if (b1 == null && b2 == null) {
+                                return 0;
+                            }
+                            if (b1 == null) {
+                                return -1;
+                            }
+                            if (b2 == null) {
+                                return 1;
+                            }
+                            return b1.compareTo(b2);
+                        },
+                        BigDecimal.class
+                )
                 .isEqualTo(expected);
     }
 
     public static <T> void assertCollectionsAreEqualIgnoringFields(Collection<T> actual,
                                                                Collection<T> expected,
                                                                String... fieldsToIgnore) {
-        assertThat(actual).isNotNull();
-        assertThat(actual).isNotEmpty();
-        assertThat(actual).hasSameSizeAs(expected);
-
         assertThat(actual)
-                .usingRecursiveFieldByFieldElementComparatorIgnoringFields(fieldsToIgnore)
-                .containsExactlyInAnyOrderElementsOf(expected);
+                .usingRecursiveComparison()
+                .ignoringFields(fieldsToIgnore)
+                .withComparatorForType(
+                        (BigDecimal b1, BigDecimal b2) -> {
+                            if (b1 == null && b2 == null) {
+                                return 0;
+                            }
+                            if (b1 == null) {
+                                return -1;
+                            }
+                            if (b2 == null) {
+                                return 1;
+                            }
+                            return b1.compareTo(b2);
+                        },
+                        BigDecimal.class
+                )
+                .ignoringCollectionOrder()
+                .isEqualTo(expected);
     }
 
     public static void assertValidationError(MvcResult result,

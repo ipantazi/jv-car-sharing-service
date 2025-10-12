@@ -6,6 +6,8 @@ import com.github.ipantazi.carsharing.dto.car.InventoryRequestDto;
 import com.github.ipantazi.carsharing.dto.car.UpdateCarDto;
 import com.github.ipantazi.carsharing.dto.enums.OperationType;
 import com.github.ipantazi.carsharing.dto.enums.RentalStatus;
+import com.github.ipantazi.carsharing.dto.payment.PaymentResponseDto;
+import com.github.ipantazi.carsharing.dto.payment.StripeSessionMetadataDto;
 import com.github.ipantazi.carsharing.dto.rental.RentalDetailedDto;
 import com.github.ipantazi.carsharing.dto.rental.RentalRequestDto;
 import com.github.ipantazi.carsharing.dto.rental.RentalResponseDto;
@@ -15,10 +17,13 @@ import com.github.ipantazi.carsharing.dto.user.UserProfileUpdateDto;
 import com.github.ipantazi.carsharing.dto.user.UserRegistrationRequestDto;
 import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
 import com.github.ipantazi.carsharing.model.Car;
+import com.github.ipantazi.carsharing.model.Payment;
 import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.model.User;
+import com.github.ipantazi.carsharing.security.CustomUserDetails;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -47,13 +52,18 @@ public class TestDataUtil {
     public static final Long EXISTING_RENTAL_ID_ANOTHER_USER = 102L;
     public static final Long NEW_RENTAL_ID = 103L;
     public static final Long NOT_EXISTING_RENTAL_ID = 999L;
+    public static final Long EXISTING_PAYMENT_WITH_ID_101 = 101L;
+    public static final Long EXISTING_PAYMENT_WITH_ID_102 = 102L;
+    public static final Long NEW_PAYMENT_ID = 103L;
+    public static final Long NOT_EXISTING_PAYMENT_ID = 999L;
 
     public static final String CAR_MODEL = "Test Car ";
     public static final String CAR_BRAND = "Test Brand ";
     public static final String CAR_TYPE = "UNIVERSAL";
     public static final int CAR_INVENTORY = 5;
-    public static final BigDecimal CAR_DAILY_FEE = new BigDecimal("100.0")
+    public static final BigDecimal CAR_DAILY_FEE = new BigDecimal("101.0")
             .setScale(1, RoundingMode.HALF_UP);
+    public static final BigDecimal TEST_AMOUNT = new BigDecimal("101.0");
 
     public static final String EMAIL_DOMAIN = "@example.com";
     public static final String NEW_EMAIL = NEW_USER_ID + EMAIL_DOMAIN;
@@ -71,13 +81,46 @@ public class TestDataUtil {
     public static final BigDecimal LATE_FEE_MULTIPLIER = BigDecimal.valueOf(1.5);
     public static final LocalDate RENTAL_DATE = LocalDate.of(2025, 1, 1);
     public static final LocalDate ACTUAL_RETURN_DATE = RENTAL_DATE.plusDays(3);
-    public static final LocalDate RETURN_DATE_LESS_THEN_ACTUAL = RENTAL_DATE.plusDays(2);
-    public static final LocalDate ACTUAL_RETURN_DATE_GREATER_THEN_RETURN_DATE = RENTAL_DATE
-            .plusDays(5);
+    public static final LocalDate RETURN_DATE = RENTAL_DATE.plusDays(NUMBER_OF_RENTAL_DAYS);
     public static final ZoneId ZONE = ZoneId.of("UTC");
     public static final Instant FIXED_INSTANT = RENTAL_DATE.plusDays(4).atStartOfDay(ZONE)
             .toInstant();
     public static final LocalDate FIXED_DATE = LocalDate.ofInstant(FIXED_INSTANT, ZONE);
+    public static final LocalDate RETURN_DATE_BEFORE_FIXED_DATE = FIXED_DATE.minusDays(2);
+    public static final LocalDate ACTUAL_RETURN_DATE_AFTER_RETURN_DATE =
+            RETURN_DATE.plusDays(1);
+
+    public static final long EXPIRY_SECONDS = 86400;
+    public static final Clock FIXED_CLOCK = Clock.fixed(FIXED_INSTANT, ZONE);
+    public static final long NOW_EPOCH = FIXED_CLOCK.instant().getEpochSecond();
+    public static final long EXPIRED_CREATED_TIME = NOW_EPOCH - EXPIRY_SECONDS - 1;
+    public static final long RECENT_CREATED_TIME = NOW_EPOCH - EXPIRY_SECONDS + 1;
+
+    public static final BigDecimal AMOUNT_TO_PAY = CAR_DAILY_FEE.multiply(BigDecimal.valueOf(
+            ChronoUnit.DAYS.between(RENTAL_DATE, RETURN_DATE)
+    )).setScale(2, RoundingMode.HALF_UP);
+    public static final BigDecimal AMOUNT_TO_PAY_FOR_NEW_PAYMENT = CAR_DAILY_FEE
+            .multiply(BigDecimal.valueOf(ChronoUnit.DAYS.between(
+                    FIXED_DATE,
+                    FIXED_DATE.plusDays(NUMBER_OF_RENTAL_DAYS)
+            )).setScale(2, RoundingMode.HALF_UP));
+    public static final BigDecimal FINE_AMOUNT_TO_PAY = CAR_DAILY_FEE
+            .multiply(BigDecimal.valueOf(ChronoUnit.DAYS.between(
+                    RETURN_DATE_BEFORE_FIXED_DATE,
+                    ACTUAL_RETURN_DATE
+            )).multiply(LATE_FEE_MULTIPLIER).setScale(2, RoundingMode.HALF_UP));
+
+    public static final String SESSION = "session ";
+    public static final String EXISTING_SESSION_ID = SESSION + EXISTING_PAYMENT_WITH_ID_101;
+    public static final String NOT_EXISTING_SESSION_ID = SESSION + NOT_EXISTING_PAYMENT_ID;
+    public static final String EXISTING_SESSION_URL = "https://checkout.stripe.com/pay/session_test_id";
+    public static final String SUCCESS_URL = "http://localhost/success";
+    public static final String CANCEL_URL = "http://localhost/cancel";
+
+    public static final String PAYLOAD_TEST = "{\"id\":\"TEST\"}";
+    public static final String SIG_HEADER_TEST = "t=123,v1=TEST";
+    public static final String ENDPOINT_SECRET = "whsec_test_secret";
+    public static final String SESSION_STATUS_COMPLETE = "checkout.session.completed";
 
     public static final String UPDATED = "Updated ";
     public static final String UPDATED_STATUS = "SUV";
@@ -97,8 +140,16 @@ public class TestDataUtil {
     public static final String NOT_EXISTING_CAR_TYPE = "NOT_EXISTING_TYPE";
     public static final int INVALID_CAR_INVENTORY = -1;
     public static final BigDecimal INVALID_CAR_DAILY_FEE = new BigDecimal("999.999");
+    public static final BigDecimal INVALID_AMOUNT_TO_PAY = new BigDecimal("999.999");
     public static final int INVALID_MAX_RENTAL_DAYS = 999;
     public static final int INVALID_MIN_RENTAL_DAYS = 1;
+    public static final String INVALID_SESSION_ID = "non-existent-session-id";
+    public static final String INVALID_STRIPE_AMOUNT_TO_PAY = "non-existent-payment-id";
+    public static final String INVALID_PAYMENT_TYPE = "UNKNOWN_TYPE";
+    public static final String INVALID_PAYMENT_RENTAL_ID = "non-existent-rental-id";
+    public static final String INVALID_SESSION_STATUS = "invalid-session-status";
+    public static final String INVALID_SIG_HEADER_TEST = "invalid-sig-header";
+    public static final String INVALID_PAYLOAD_TEST = "{\"id\":\"invalid\"}";
 
     public static final String[] CAR_IGNORING_FIELDS = new String[] {"id", "type", "isDeleted"};
     public static final String CAR_DTO_IGNORING_FIELD = "id";
@@ -106,6 +157,14 @@ public class TestDataUtil {
     public static final String[] RENTAL_DTO_IGNORING_FIELDS = new String[] {
             "id", "userId", "carDto.id"
     };
+    public static final String[] PAYMENT_IGNORING_FIELDS = new String[] {"id", "rentalId"};
+    public static final String[] NEW_PAYMENT_IGNORING_FIELDS = new String[] {
+            "id",
+            "rentalId",
+            "sessionUrl",
+            "sessionId"
+    };
+    public static final String SESSION_METADATA_IGNORING_FIELD = "rentalId";
 
     public static final Pageable CAR_PAGEABLE = PageRequest.of(
             0,
@@ -116,6 +175,11 @@ public class TestDataUtil {
             0,
             10,
             Sort.by("returnDate").descending()
+    );
+    public static final Pageable PAYMENT_PAGEABLE = PageRequest.of(
+            0,
+            10,
+            Sort.by("rentalId").descending()
     );
 
     protected TestDataUtil() {
@@ -301,6 +365,17 @@ public class TestDataUtil {
         );
     }
 
+    public static CustomUserDetails createCustomUserDetailsDto(User user, User.Role role) {
+        return new CustomUserDetails(
+                user.getId(),
+                user.getEmail(),
+                user.getPassword(),
+                user.getAuthorities(),
+                role,
+                user.isEnabled()
+        );
+    }
+
     public static UserChangePasswordDto createTestChangePasswordRequestDto() {
         return new UserChangePasswordDto(
                 NOT_HASHED_PASSWORD,
@@ -315,8 +390,7 @@ public class TestDataUtil {
         dto.setId(id);
         dto.setUserId(id);
         dto.setRentalDate(String.valueOf(RENTAL_DATE));
-        dto.setReturnDate(String.valueOf(LocalDate.parse(dto.getRentalDate())
-                .plusDays(NUMBER_OF_RENTAL_DAYS)));
+        dto.setReturnDate(String.valueOf(RETURN_DATE));
         dto.setBaseRentalCost(BigDecimal.valueOf(id * NUMBER_OF_RENTAL_DAYS)
                 .setScale(1, RoundingMode.HALF_UP));
         dto.setCarDto(createTestCarDto(id));
@@ -349,14 +423,19 @@ public class TestDataUtil {
         dto.setId(id);
         dto.setUserId(id);
         dto.setRentalDate(String.valueOf(RENTAL_DATE));
-        dto.setReturnDate(String.valueOf(LocalDate.parse(dto.getRentalDate())
-                .plusDays(NUMBER_OF_RENTAL_DAYS)));
+        dto.setReturnDate(String.valueOf(RETURN_DATE));
         dto.setCarDto(createTestCarDto(id));
-        dto.setBaseRentalCost(BigDecimal.valueOf(id * NUMBER_OF_RENTAL_DAYS)
-                .setScale(1, RoundingMode.HALF_UP));
+
+        long rentalDays = ChronoUnit.DAYS.between(
+                LocalDate.parse(dto.getRentalDate()),
+                LocalDate.parse(dto.getReturnDate())
+        );
+        dto.setBaseRentalCost(BigDecimal.valueOf(id * rentalDays)
+                        .setScale(1, RoundingMode.HALF_UP));
+
         dto.setPenaltyAmount(BigDecimal.ZERO);
         dto.setTotalCost(dto.getBaseRentalCost().add(dto.getPenaltyAmount()));
-        dto.setAmountPaid(dto.getBaseRentalCost());
+        dto.setAmountPaid(BigDecimal.ZERO);
         dto.setAmountDue(dto.getTotalCost().subtract(dto.getAmountPaid()));
         if (actualReturnDate == null) {
             dto.setStatus(RentalStatus.ACTIVE);
@@ -367,27 +446,30 @@ public class TestDataUtil {
         return dto;
     }
 
-    public static RentalDetailedDto createTestRentalDetailedDtoWithPenalty(
-            Long id,
-            LocalDate returnDate,
-            LocalDate actualReturnDate
-    ) {
+    public static RentalDetailedDto createTestRentalDetailedDtoWithPenalty(Long id) {
         RentalDetailedDto dto = new RentalDetailedDto();
         dto.setId(id);
         dto.setUserId(id);
         dto.setRentalDate(String.valueOf(RENTAL_DATE));
-        dto.setReturnDate(returnDate.toString());
-        dto.setActualReturnDate(actualReturnDate.toString());
+        dto.setReturnDate(String.valueOf(RETURN_DATE_BEFORE_FIXED_DATE));
+        dto.setActualReturnDate(String.valueOf(FIXED_DATE));
         dto.setCarDto(createTestCarDto(id));
         dto.setStatus(RentalStatus.RETURNED);
 
         BigDecimal dailyFee = dto.getCarDto().getDailyFee();
-        long daysForBaseRental = ChronoUnit.DAYS.between(RENTAL_DATE, returnDate);
-        BigDecimal expectedBaseRental = dailyFee.multiply(BigDecimal.valueOf(daysForBaseRental));
+        long rentalDays = ChronoUnit.DAYS.between(
+                LocalDate.parse(dto.getRentalDate()),
+                LocalDate.parse(dto.getReturnDate())
+        );
+        BigDecimal expectedBaseRental = dailyFee.multiply(BigDecimal.valueOf(rentalDays))
+                        .setScale(1, RoundingMode.HALF_UP);
         dto.setBaseRentalCost(expectedBaseRental);
-        dto.setAmountPaid(expectedBaseRental);
+        dto.setAmountPaid(BigDecimal.ZERO);
 
-        long daysLate = ChronoUnit.DAYS.between(returnDate, actualReturnDate);
+        long daysLate = ChronoUnit.DAYS.between(
+                LocalDate.parse(dto.getReturnDate()),
+                LocalDate.parse(dto.getActualReturnDate())
+        );
         BigDecimal penaltyAmount = dailyFee.multiply(BigDecimal.valueOf(daysLate))
                 .multiply(LATE_FEE_MULTIPLIER);
         dto.setPenaltyAmount(penaltyAmount);
@@ -430,10 +512,132 @@ public class TestDataUtil {
         return rental;
     }
 
+    public static Rental createTestRental(Long id, LocalDate actualReturnDate) {
+        Rental rental = new Rental();
+        rental.setId(id);
+        rental.setUserId(id);
+        rental.setCarId(id);
+        rental.setRentalDate(RENTAL_DATE);
+        rental.setReturnDate(RETURN_DATE);
+        rental.setActualReturnDate(actualReturnDate);
+        return rental;
+    }
+
     public static RentalRequestDto createTestRentalRequestDto(RentalResponseDto rentalDto) {
         return new RentalRequestDto(
                 LocalDate.parse(rentalDto.getReturnDate()),
                 rentalDto.getCarDto().getId()
+        );
+    }
+
+    public static PaymentResponseDto createTestPaymentResponseDto(Long id, Payment.Status status) {
+        PaymentResponseDto dto = new PaymentResponseDto();
+        dto.setId(id);
+        dto.setRentalId(EXISTING_RENTAL_ID);
+        dto.setSessionId(SESSION + id);
+        dto.setSessionUrl(EXISTING_SESSION_URL);
+        dto.setAmountToPay(AMOUNT_TO_PAY);
+        dto.setType(Payment.Type.PAYMENT);
+        dto.setStatus(status);
+        return dto;
+    }
+
+    public static PaymentResponseDto createNewTestPaymentResponseDto(Long id,
+                                                                     Payment.Status status) {
+        PaymentResponseDto dto = new PaymentResponseDto();
+        dto.setId(id);
+        dto.setRentalId(EXISTING_RENTAL_ID);
+        dto.setSessionId(SESSION + id);
+        dto.setSessionUrl(EXISTING_SESSION_URL);
+        dto.setAmountToPay(AMOUNT_TO_PAY_FOR_NEW_PAYMENT);
+        dto.setType(Payment.Type.PAYMENT);
+        dto.setStatus(status);
+        return dto;
+    }
+
+    public static PaymentResponseDto createNewTestPaymentResponseDtoTypeFine(
+            Long id,
+            Payment.Status status
+    ) {
+        PaymentResponseDto dto = new PaymentResponseDto();
+        dto.setId(id);
+        dto.setRentalId(EXISTING_RENTAL_ID);
+        dto.setSessionId(SESSION + id);
+        dto.setSessionUrl(EXISTING_SESSION_URL);
+        dto.setAmountToPay(FINE_AMOUNT_TO_PAY);
+        dto.setType(Payment.Type.FINE);
+        dto.setStatus(status);
+        return dto;
+    }
+
+    public static Payment createTestPayment(PaymentResponseDto paymentResponseDto) {
+        Payment payment = new Payment();
+        payment.setId(paymentResponseDto.getId());
+        payment.setRentalId(paymentResponseDto.getRentalId());
+        payment.setSessionId(paymentResponseDto.getSessionId());
+        payment.setSessionUrl(paymentResponseDto.getSessionUrl());
+        payment.setAmountToPay(paymentResponseDto.getAmountToPay());
+        payment.setType(paymentResponseDto.getType());
+        payment.setStatus(paymentResponseDto.getStatus());
+        return payment;
+    }
+
+    public static Payment createTestPayment(Long id, Payment.Status status) {
+        Payment payment = new Payment();
+        payment.setId(id);
+        payment.setRentalId(EXISTING_RENTAL_ID);
+        payment.setSessionId(SESSION + id);
+        payment.setSessionUrl(EXISTING_SESSION_URL);
+        payment.setAmountToPay(AMOUNT_TO_PAY);
+        payment.setType(Payment.Type.PAYMENT);
+        payment.setStatus(status);
+        return payment;
+    }
+
+    public static Payment createTestPaymentTypeFine(Long id, Payment.Status status) {
+        Payment payment = new Payment();
+        payment.setId(id);
+        payment.setRentalId(EXISTING_RENTAL_ID);
+        payment.setSessionId(SESSION + id);
+        payment.setSessionUrl(EXISTING_SESSION_URL);
+        payment.setAmountToPay(FINE_AMOUNT_TO_PAY);
+        payment.setType(Payment.Type.FINE);
+        payment.setStatus(status);
+        return payment;
+    }
+
+    public static StripeSessionMetadataDto createTestStripeSessionMetadataDto(
+            PaymentResponseDto paymentResponseDto) {
+        return new StripeSessionMetadataDto(
+                paymentResponseDto.getSessionId(),
+                paymentResponseDto.getRentalId(),
+                paymentResponseDto.getType(),
+                paymentResponseDto.getAmountToPay(),
+                paymentResponseDto.getSessionUrl()
+        );
+    }
+
+    public static StripeSessionMetadataDto createTestStripeSessionMetadataDto(
+            Payment payment) {
+        return new StripeSessionMetadataDto(
+                payment.getSessionId(),
+                payment.getRentalId(),
+                payment.getType(),
+                payment.getAmountToPay(),
+                payment.getSessionUrl()
+        );
+    }
+
+    public static StripeSessionMetadataDto createTestStripeSessionMetadataDto(
+            Long id,
+            BigDecimal amountToPay
+    ) {
+        return new StripeSessionMetadataDto(
+                SESSION + id,
+                id,
+                Payment.Type.PAYMENT,
+                amountToPay,
+                EXISTING_SESSION_URL
         );
     }
 }

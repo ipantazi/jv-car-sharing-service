@@ -71,8 +71,7 @@ public class UserIdSpecificationProviderTest {
         Specification<Rental> actualSpecification = provider.getSpecification("NOT LONG");
 
         // Then
-        assertThat(actualSpecification).isNotNull();
-        assertThat(actualSpecification).isEqualTo(Specification.where(null));
+        assertThat(actualSpecification).isNull();
         verifyNoInteractions(criteriaBuilder, root);
     }
 
@@ -83,8 +82,7 @@ public class UserIdSpecificationProviderTest {
         Specification<Rental> actualSpecification = provider.getSpecification(null);
 
         // Then
-        assertThat(actualSpecification).isNotNull();
-        assertThat(actualSpecification).isEqualTo(Specification.where(null));
+        assertThat(actualSpecification).isNull();
         verifyNoInteractions(criteriaBuilder, root);
     }
 
@@ -95,7 +93,6 @@ public class UserIdSpecificationProviderTest {
         Specification<Rental> actualSpecification = provider.getSpecification(-1L);
 
         // Then
-        assertThat(actualSpecification).isNotNull();
-        assertThat(actualSpecification.toPredicate(root, query, criteriaBuilder)).isNull();
+        assertThat(actualSpecification).isNull();
     }
 }

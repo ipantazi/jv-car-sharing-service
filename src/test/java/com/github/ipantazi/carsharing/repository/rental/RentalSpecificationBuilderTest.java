@@ -100,6 +100,6 @@ public class RentalSpecificationBuilderTest {
         Specification<Rental> actual = builder.build(null, null);
 
         // Then
-        assertThat(actual).isEqualTo(Specification.where(null));
+        assertThat(actual).isNull();
     }
 }

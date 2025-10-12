@@ -408,14 +408,16 @@ public class CarServiceTest {
     @DisplayName("Test validateCarAvailableForRental() method when the car is available")
     void validateCarAvailableForRental_CarAvailable_CheckSuccess() {
         // Given
-        Car car = createTestCar(EXISTING_CAR_ID);
-        when(carRepository.findById(EXISTING_CAR_ID)).thenReturn(Optional.of(car));
+        boolean availableStatus = true;
+        when(carRepository.existsCarByIdAndInventoryIsGreaterThan(EXISTING_CAR_ID, 0))
+                .thenReturn(availableStatus);
 
         // When
         carService.validateCarAvailableForRental(EXISTING_CAR_ID);
 
         // Then
-        verify(carRepository, times(1)).findById(EXISTING_CAR_ID);
+        verify(carRepository, times(1))
+                .existsCarByIdAndInventoryIsGreaterThan(EXISTING_CAR_ID, 0);
         verifyNoMoreInteractions(carRepository);
     }
 
@@ -423,15 +425,15 @@ public class CarServiceTest {
     @DisplayName("Test validateCarAvailableForRental() method when the car is not available")
     void validateCarAvailableForRental_CarNotAvailable_ThrowsException() {
         // Given
-        Car car = createTestCar(EXISTING_CAR_ID);
-        car.setInventory(0);
-        when(carRepository.findById(EXISTING_CAR_ID)).thenReturn(Optional.of(car));
+        boolean availableStatus = false;
+        when(carRepository.existsCarByIdAndInventoryIsGreaterThan(EXISTING_CAR_ID, 0))
+                .thenReturn(availableStatus);
 
         // When & Then
         assertThatThrownBy(() -> carService.validateCarAvailableForRental(EXISTING_CAR_ID))
                 .isInstanceOf(CarNotAvailableException.class)
-                .hasMessage("Car with id: " + EXISTING_CAR_ID + " is not available.");
-        verify(carRepository, times(1)).findById(EXISTING_CAR_ID);
+                .hasMessage("Car with id: " + EXISTING_CAR_ID + " is not available for rental.");
+        verify(carRepository, times(1)).existsCarByIdAndInventoryIsGreaterThan(EXISTING_CAR_ID, 0);
         verifyNoMoreInteractions(carRepository);
     }
 
@@ -439,13 +441,17 @@ public class CarServiceTest {
     @DisplayName("Test validateCarAvailableForRental() method when the car does not exist")
     void validateCarAvailableForRental_CarDoesNotExist_ThrowsException() {
         // Given
-        when(carRepository.findById(NOT_EXISTING_CAR_ID)).thenReturn(Optional.empty());
+        boolean availableStatus = false;
+        when(carRepository.existsCarByIdAndInventoryIsGreaterThan(NOT_EXISTING_CAR_ID, 0))
+                .thenReturn(availableStatus);
 
         // When & Then
         assertThatThrownBy(() -> carService.validateCarAvailableForRental(NOT_EXISTING_CAR_ID))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessage("Car not found with id: " + NOT_EXISTING_CAR_ID);
-        verify(carRepository, times(1)).findById(NOT_EXISTING_CAR_ID);
+                .isInstanceOf(CarNotAvailableException.class)
+                .hasMessage("Car with id: %d is not available for rental."
+                        .formatted(NOT_EXISTING_CAR_ID));
+        verify(carRepository, times(1))
+                .existsCarByIdAndInventoryIsGreaterThan(NOT_EXISTING_CAR_ID, 0);
         verifyNoMoreInteractions(carRepository);
     }
 
