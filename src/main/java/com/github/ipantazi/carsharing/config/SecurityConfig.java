@@ -45,7 +45,10 @@ public class SecurityConfig {
                                         "/auth/**",
                                         "/error",
                                         "/swagger-ui/**",
-                                        "/v3/api-docs/**"
+                                        "/v3/api-docs/**",
+                                        "/webhook/stripe",
+                                        "/payments/success",
+                                        "/payments/cancel"
                                 ).permitAll()
                                 .anyRequest()
                                 .authenticated()
