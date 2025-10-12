@@ -1,0 +1,1 @@
+DELETE FROM payments WHERE id = 102 AND type = 'FINE';
