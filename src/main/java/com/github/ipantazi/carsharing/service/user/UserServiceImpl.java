@@ -107,8 +107,7 @@ public class UserServiceImpl implements UserService {
         return isManager(userId) || userId.equals(rentalUserId);
     }
 
-    @Override
-    public boolean isManager(Long userId) {
+    private boolean isManager(Long userId) {
         return getUserById(userId).getRole().equals(User.Role.MANAGER);
     }
 

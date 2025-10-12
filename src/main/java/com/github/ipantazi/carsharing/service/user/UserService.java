@@ -21,8 +21,6 @@ public interface UserService {
 
     void changePassword(Long id, UserChangePasswordDto requestDto);
 
-    boolean isManager(Long userId);
-
     boolean validateUserExistsOrThrow(Long userId);
 
     Long resolveUserIdForAccess(CustomUserDetails userDetails, Long requestedUserId);
