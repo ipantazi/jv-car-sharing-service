@@ -2,6 +2,7 @@ package com.github.ipantazi.carsharing.service.payment;
 
 import com.github.ipantazi.carsharing.dto.payment.StripeSessionMetadataDto;
 import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
+import com.github.ipantazi.carsharing.exception.InvalidPaymentAmountException;
 import com.github.ipantazi.carsharing.exception.PendingPaymentsExistException;
 import com.github.ipantazi.carsharing.model.Payment;
 import com.github.ipantazi.carsharing.model.Rental;
@@ -48,10 +49,7 @@ public class PaymentValidatorImpl implements PaymentValidator {
         }
 
         if (!expectedAmount.equals(amountFromSession)) {
-            throw new IllegalStateException(
-                    "Invalid amount paid for the rental. Expected: %s, Paid: %s"
-                    .formatted(expectedAmount, amountFromSession)
-            );
+            throw new InvalidPaymentAmountException(expectedAmount, amountFromSession);
         }
     }
 }

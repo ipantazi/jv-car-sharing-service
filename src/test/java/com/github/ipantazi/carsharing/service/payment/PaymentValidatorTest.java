@@ -17,6 +17,7 @@ import static org.mockito.Mockito.when;
 
 import com.github.ipantazi.carsharing.dto.payment.StripeSessionMetadataDto;
 import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
+import com.github.ipantazi.carsharing.exception.InvalidPaymentAmountException;
 import com.github.ipantazi.carsharing.exception.PendingPaymentsExistException;
 import com.github.ipantazi.carsharing.model.Payment;
 import com.github.ipantazi.carsharing.model.Rental;
@@ -151,7 +152,7 @@ public class PaymentValidatorTest {
 
         // When & Then
         assertThatThrownBy(() -> paymentValidator.checkingAmountToPay(metadataDto, null))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(InvalidPaymentAmountException.class)
                 .hasMessage("Invalid amount paid for the rental. Expected: %s, Paid: %s"
                                 .formatted(AMOUNT_TO_PAY, metadataDto.amountToPay()));
 
@@ -191,7 +192,7 @@ public class PaymentValidatorTest {
 
         // When & Then
         assertThatThrownBy(() -> paymentValidator.checkingAmountToPay(metadataDto, payment))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(InvalidPaymentAmountException.class)
                 .hasMessage("Invalid amount paid for the rental. Expected: %s, Paid: %s"
                                 .formatted(payment.getAmountToPay(), metadataDto.amountToPay()));
 

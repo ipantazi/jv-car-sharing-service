@@ -39,8 +39,9 @@ public class CustomGlobalExceptionHandler extends ResponseEntityExceptionHandler
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<Object> handleIllegalStateException(IllegalStateException ex) {
+    @ExceptionHandler(InvalidPaymentAmountException.class)
+    public ResponseEntity<Object> handleInvalidPaymentAmountException(
+            InvalidPaymentAmountException ex) {
         Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.BAD_REQUEST);
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
@@ -133,13 +134,6 @@ public class CustomGlobalExceptionHandler extends ResponseEntityExceptionHandler
             InvalidPaymentStatusException ex) {
         Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.CONFLICT);
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
-    }
-
-    @ExceptionHandler(StripeSessionExpiredException.class)
-    public ResponseEntity<Object> handleStripeSessionExpiredException(
-            StripeSessionExpiredException ex) {
-        Map<String, Object> body = bodyBuilder(ex.getMessage(), HttpStatus.GONE);
-        return new ResponseEntity<>(body, HttpStatus.GONE);
     }
 
     @ExceptionHandler(SignatureVerificationException.class)
