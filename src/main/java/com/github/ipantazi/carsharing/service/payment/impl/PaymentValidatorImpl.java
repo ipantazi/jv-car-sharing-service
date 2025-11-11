@@ -1,4 +1,4 @@
-package com.github.ipantazi.carsharing.service.payment;
+package com.github.ipantazi.carsharing.service.payment.impl;
 
 import com.github.ipantazi.carsharing.dto.payment.StripeSessionMetadataDto;
 import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
@@ -8,6 +8,7 @@ import com.github.ipantazi.carsharing.model.Payment;
 import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.repository.payment.PaymentRepository;
 import com.github.ipantazi.carsharing.repository.rental.RentalRepository;
+import com.github.ipantazi.carsharing.service.payment.PaymentValidator;
 import com.github.ipantazi.carsharing.service.rental.Calculator;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;

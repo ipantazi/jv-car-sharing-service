@@ -40,6 +40,8 @@ import com.github.ipantazi.carsharing.repository.rental.RentalSpecificationBuild
 import com.github.ipantazi.carsharing.service.car.CarServiceImpl;
 import com.github.ipantazi.carsharing.service.car.InventoryServiceImpl;
 import com.github.ipantazi.carsharing.service.payment.PaymentValidator;
+import com.github.ipantazi.carsharing.service.rental.impl.RentalServiceImpl;
+// import com.github.ipantazi.carsharing.service.user.UserService;
 import java.time.Clock;
 import java.util.Collections;
 import java.util.List;

@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
 import com.github.ipantazi.carsharing.dto.payment.StripeSessionMetadataDto;
 import com.github.ipantazi.carsharing.exception.InvalidStripePayloadException;
 import com.github.ipantazi.carsharing.service.payment.PaymentService;
+import com.github.ipantazi.carsharing.service.payment.stripe.impl.StripeWebhookServiceImpl;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;

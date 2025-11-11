@@ -37,6 +37,7 @@ import com.github.ipantazi.carsharing.mapper.PaymentMapper;
 import com.github.ipantazi.carsharing.model.Payment;
 import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.repository.payment.PaymentRepository;
+import com.github.ipantazi.carsharing.service.payment.impl.PaymentServiceImpl;
 import com.github.ipantazi.carsharing.service.payment.stripe.StripeClient;
 import com.github.ipantazi.carsharing.service.rental.Calculator;
 import com.github.ipantazi.carsharing.service.rental.RentalService;

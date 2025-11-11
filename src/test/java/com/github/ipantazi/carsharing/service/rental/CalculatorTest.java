@@ -15,6 +15,7 @@ import com.github.ipantazi.carsharing.model.Payment;
 import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.repository.car.CarRepository;
 import com.github.ipantazi.carsharing.repository.payment.PaymentRepository;
+import com.github.ipantazi.carsharing.service.rental.impl.CalculatorImpl;
 import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;

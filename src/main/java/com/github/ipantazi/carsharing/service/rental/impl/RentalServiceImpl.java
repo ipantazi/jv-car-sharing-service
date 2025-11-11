@@ -1,4 +1,4 @@
-package com.github.ipantazi.carsharing.service.rental;
+package com.github.ipantazi.carsharing.service.rental.impl;
 
 import com.github.ipantazi.carsharing.dto.car.CarDto;
 import com.github.ipantazi.carsharing.dto.enums.OperationType;
@@ -14,6 +14,10 @@ import com.github.ipantazi.carsharing.repository.rental.RentalSpecificationBuild
 import com.github.ipantazi.carsharing.service.car.CarService;
 import com.github.ipantazi.carsharing.service.car.InventoryService;
 import com.github.ipantazi.carsharing.service.payment.PaymentValidator;
+import com.github.ipantazi.carsharing.service.rental.Calculator;
+import com.github.ipantazi.carsharing.service.rental.RentalService;
+import com.github.ipantazi.carsharing.service.rental.RentalValidator;
+// import com.github.ipantazi.carsharing.service.user.UserService;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;

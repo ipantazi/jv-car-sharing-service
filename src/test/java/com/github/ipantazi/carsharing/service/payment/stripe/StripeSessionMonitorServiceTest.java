@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import com.github.ipantazi.carsharing.model.Payment;
 import com.github.ipantazi.carsharing.repository.payment.PaymentRepository;
+import com.github.ipantazi.carsharing.service.payment.stripe.impl.StripeSessionMonitorServiceImpl;
 import com.stripe.exception.ApiException;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;

@@ -1,7 +1,9 @@
-package com.github.ipantazi.carsharing.service.payment.stripe;
+package com.github.ipantazi.carsharing.service.payment.stripe.impl;
 
 import com.github.ipantazi.carsharing.exception.InvalidStripePayloadException;
 import com.github.ipantazi.carsharing.service.payment.PaymentService;
+import com.github.ipantazi.carsharing.service.payment.stripe.StripeClient;
+import com.github.ipantazi.carsharing.service.payment.stripe.StripeWebhookService;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
 import com.stripe.model.checkout.Session;

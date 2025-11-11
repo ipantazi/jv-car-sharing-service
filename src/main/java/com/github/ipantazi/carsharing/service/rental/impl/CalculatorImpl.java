@@ -1,9 +1,10 @@
-package com.github.ipantazi.carsharing.service.rental;
+package com.github.ipantazi.carsharing.service.rental.impl;
 
 import com.github.ipantazi.carsharing.model.Payment;
 import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.repository.car.CarRepository;
 import com.github.ipantazi.carsharing.repository.payment.PaymentRepository;
+import com.github.ipantazi.carsharing.service.rental.Calculator;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;

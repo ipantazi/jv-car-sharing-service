@@ -34,6 +34,7 @@ import com.github.ipantazi.carsharing.dto.payment.PaymentRequestDto;
 import com.github.ipantazi.carsharing.dto.payment.StripeSessionMetadataDto;
 import com.github.ipantazi.carsharing.exception.InvalidStripePayloadException;
 import com.github.ipantazi.carsharing.model.Payment;
+import com.github.ipantazi.carsharing.service.payment.stripe.impl.StripeClientImpl;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;

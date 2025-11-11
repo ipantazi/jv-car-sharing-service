@@ -1,10 +1,11 @@
-package com.github.ipantazi.carsharing.service.rental;
+package com.github.ipantazi.carsharing.service.rental.impl;
 
 import com.github.ipantazi.carsharing.dto.rental.RentalRequestDto;
 import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
 import com.github.ipantazi.carsharing.exception.InvalidRentalDatesException;
 import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.repository.rental.RentalRepository;
+import com.github.ipantazi.carsharing.service.rental.RentalValidator;
 import com.github.ipantazi.carsharing.service.user.UserService;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;

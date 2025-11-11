@@ -23,6 +23,7 @@ import com.github.ipantazi.carsharing.model.Payment;
 import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.repository.payment.PaymentRepository;
 import com.github.ipantazi.carsharing.repository.rental.RentalRepository;
+import com.github.ipantazi.carsharing.service.payment.impl.PaymentValidatorImpl;
 import com.github.ipantazi.carsharing.service.rental.Calculator;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
