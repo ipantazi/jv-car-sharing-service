@@ -26,4 +26,6 @@ public interface UserService {
     Long resolveUserIdForAccess(CustomUserDetails userDetails, Long requestedUserId);
 
     boolean canAccessRental(Long userId, Rental rental);
+
+    String getEmailByRentalId(Long userId);
 }
