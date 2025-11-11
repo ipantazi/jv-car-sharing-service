@@ -90,6 +90,8 @@ public class TestDataUtil {
     public static final LocalDate RETURN_DATE_BEFORE_FIXED_DATE = FIXED_DATE.minusDays(2);
     public static final LocalDate ACTUAL_RETURN_DATE_AFTER_RETURN_DATE =
             RETURN_DATE.plusDays(1);
+    public static final long DAYS_OVERDUE = ChronoUnit.DAYS.between(FIXED_DATE,
+            RETURN_DATE_BEFORE_FIXED_DATE);
 
     public static final long EXPIRY_SECONDS = 86400;
     public static final Clock FIXED_CLOCK = Clock.fixed(FIXED_INSTANT, ZONE);

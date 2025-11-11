@@ -63,6 +63,18 @@ public class CalculatorImpl implements Calculator {
         return paymentRepository.sumAmountToPayByRentalIdAndStatus(rentalId, Payment.Status.PAID);
     }
 
+    @Override
+    public long calculateDaysOverdue(LocalDate returnDate, LocalDate today) {
+        if (returnDate == null || today == null) {
+            throw new IllegalArgumentException("Return date or today cannot be null");
+        }
+        if (today.isAfter(returnDate)) {
+            return ChronoUnit.DAYS.between(today, returnDate);
+        }
+        throw new IllegalArgumentException(("Rental is not late. "
+                + "Return date %s must be before today %s").formatted(returnDate, today));
+    }
+
     private void validateInputs(BigDecimal dailyFee, Rental rental) {
         if (dailyFee == null || dailyFee.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Invalid daily fee: " + dailyFee);
