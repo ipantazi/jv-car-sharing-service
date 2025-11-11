@@ -67,6 +67,7 @@ public class TestDataUtil {
 
     public static final String EMAIL_DOMAIN = "@example.com";
     public static final String NEW_EMAIL = NEW_USER_ID + EMAIL_DOMAIN;
+    public static final String EXISTING_EMAIL = EXISTING_USER_ID + EMAIL_DOMAIN;
     public static final String NOT_HASHED_PASSWORD = "Test&password1";
     public static final String NOT_EXISTING_NOT_HASHED_PASSWORD = "Not&existingPassword1";
     public static final String NEW_NOT_HASHED_PASSWORD = "New&password1";

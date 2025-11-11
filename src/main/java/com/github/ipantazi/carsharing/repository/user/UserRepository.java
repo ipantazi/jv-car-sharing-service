@@ -20,4 +20,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
     WHERE id = ? AND is_deleted = TRUE                                        
             """, nativeQuery = true)
     Long existsSoftDeletedUserById(@Param("id") Long id);
+
+    @Query("""
+    SELECT u.email
+    FROM User u
+    WHERE u.id IN (
+        SELECT r.userId
+        FROM Rental r
+        WHERE r.id = :rentalId
+    )
+            """)
+    Optional<String> getEmailByRentalId(@Param("rentalId") Long rentalId);
 }
