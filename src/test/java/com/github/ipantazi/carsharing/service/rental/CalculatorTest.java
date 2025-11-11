@@ -310,21 +310,21 @@ public class CalculatorTest {
     @Test
     @DisplayName("Test calculateDaysOverdue() method when today is before return date")
     public void calculateDaysOverdue_TodayBeforeReturnDate_ThrowsException() {
-        // When & Then
-        assertThatThrownBy(() -> calculator.calculateDaysOverdue(RETURN_DATE, FIXED_DATE))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Rental is not late. Return date %s must be before today %s"
-                        .formatted(RETURN_DATE, FIXED_DATE));
+        // When
+        long daysOverdue = calculator.calculateDaysOverdue(RETURN_DATE, FIXED_DATE);
+
+        // Then
+        assertThat(daysOverdue).isEqualTo(0);
     }
 
     @Test
     @DisplayName("Test calculateDaysOverdue() method when today is equal to return date")
     public void calculateDaysOverdue_TodayEqualsReturnDate_ThrowsException() {
-        // When & Then
-        assertThatThrownBy(() -> calculator.calculateDaysOverdue(RETURN_DATE, RETURN_DATE))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Rental is not late. Return date %s must be before today %s"
-                        .formatted(RETURN_DATE, RETURN_DATE));
+        // When
+        long daysOverdue = calculator.calculateDaysOverdue(RETURN_DATE, RETURN_DATE);
+
+        // Then
+        assertThat(daysOverdue).isEqualTo(0);
     }
 
     @Test

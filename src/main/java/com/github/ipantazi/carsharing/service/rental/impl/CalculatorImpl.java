@@ -69,10 +69,9 @@ public class CalculatorImpl implements Calculator {
             throw new IllegalArgumentException("Return date or today cannot be null");
         }
         if (today.isAfter(returnDate)) {
-            return ChronoUnit.DAYS.between(today, returnDate);
+            return ChronoUnit.DAYS.between(returnDate, today);
         }
-        throw new IllegalArgumentException(("Rental is not late. "
-                + "Return date %s must be before today %s").formatted(returnDate, today));
+        return 0;
     }
 
     private void validateInputs(BigDecimal dailyFee, Rental rental) {
