@@ -9,6 +9,10 @@ import com.github.ipantazi.carsharing.dto.rental.RentalResponseDto;
 import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
 import com.github.ipantazi.carsharing.mapper.RentalMapper;
 import com.github.ipantazi.carsharing.model.Rental;
+import com.github.ipantazi.carsharing.notification.NotificationMapper;
+import com.github.ipantazi.carsharing.notification.NotificationService;
+import com.github.ipantazi.carsharing.notification.NotificationType;
+import com.github.ipantazi.carsharing.notification.dto.NewRentalPayload;
 import com.github.ipantazi.carsharing.repository.rental.RentalRepository;
 import com.github.ipantazi.carsharing.repository.rental.RentalSpecificationBuilder;
 import com.github.ipantazi.carsharing.service.car.CarService;
@@ -17,7 +21,7 @@ import com.github.ipantazi.carsharing.service.payment.PaymentValidator;
 import com.github.ipantazi.carsharing.service.rental.Calculator;
 import com.github.ipantazi.carsharing.service.rental.RentalService;
 import com.github.ipantazi.carsharing.service.rental.RentalValidator;
-// import com.github.ipantazi.carsharing.service.user.UserService;
+import com.github.ipantazi.carsharing.service.user.UserService;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -47,6 +51,9 @@ public class RentalServiceImpl implements RentalService {
     private final Calculator calculator;
     private final PaymentValidator paymentValidator;
     private final RentalValidator rentalValidator;
+    private final NotificationService notificationService;
+    private final NotificationMapper notificationMapper;
+    private final UserService userService;
 
     @Override
     @Transactional
@@ -66,6 +73,12 @@ public class RentalServiceImpl implements RentalService {
         inventoryService.adjustInventory(carId, 1, OperationType.DECREASE);
 
         CarDto carDto = carService.getById(carId);
+        NewRentalPayload newRentalPayload = notificationMapper.toRentalPayload(
+                rental,
+                userService.getUserDetails(userId),
+                carDto);
+        notificationService.sendMessage(NotificationType.NEW_RENTAL_CREATED, newRentalPayload);
+
         return buildRentalResponseDto(rental, carDto);
     }
 
