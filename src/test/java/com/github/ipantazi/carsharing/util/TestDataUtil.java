@@ -122,7 +122,7 @@ public class TestDataUtil {
 
     public static final String PAYLOAD_TEST = "{\"id\":\"TEST\"}";
     public static final String SIG_HEADER_TEST = "t=123,v1=TEST";
-    public static final String ENDPOINT_SECRET = "whsec_test_secret";
+    public static final String ENDPOINT_SECRET_TEST = "whsec_test_secret";
     public static final String SESSION_STATUS_COMPLETE = "checkout.session.completed";
 
     public static final String UPDATED = "Updated ";

@@ -2,15 +2,17 @@ package com.github.ipantazi.carsharing.service.payment.stripe;
 
 import static com.github.ipantazi.carsharing.util.TestDataUtil.AMOUNT_TO_PAY;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.CANCEL_URL;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.ENDPOINT_SECRET;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.ENDPOINT_SECRET_TEST;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_SESSION_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_SESSION_URL;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXPIRED_CREATED_TIME;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXPIRY_SECONDS;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.FIXED_CLOCK;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.INVALID_PAYLOAD_TEST;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.INVALID_PAYMENT_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.INVALID_PAYMENT_TYPE;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.INVALID_SIG_HEADER_TEST;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.INVALID_STRIPE_AMOUNT_TO_PAY;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.PAYLOAD_TEST;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.RECENT_CREATED_TIME;
@@ -305,64 +307,96 @@ public class StripeClientTest {
 
     @Test
     @DisplayName("Test constructEvent() method when webhook succeeds")
-    void constructEvent_WebhookSucceeds_returnsEvent() throws Exception {
+    void constructEvent_WebhookSucceeds_returnsEvent() {
         // Given
-        Event mockedEvent = mock(Event.class);
+        Event expectedEvent = mock(Event.class);
 
         try (MockedStatic<Webhook> mockedWebhook = mockStatic(Webhook.class)) {
             mockedWebhook.when(() -> Webhook.constructEvent(
                             eq(PAYLOAD_TEST),
                             eq(SIG_HEADER_TEST),
-                            eq(ENDPOINT_SECRET)
+                            eq(ENDPOINT_SECRET_TEST)
                     ))
-                    .thenReturn(mockedEvent);
+                    .thenReturn(expectedEvent);
 
             // When
-            Event result = stripeClient.constructEvent(
+            Event actualEvent = stripeClient.constructEvent(
                     PAYLOAD_TEST,
                     SIG_HEADER_TEST,
-                    ENDPOINT_SECRET
+                    ENDPOINT_SECRET_TEST
             );
 
             // Then
-            assertThat(result).isSameAs(mockedEvent);
+            assertThat(actualEvent).isSameAs(expectedEvent);
 
             mockedWebhook.verify(() -> Webhook.constructEvent(
                     eq(PAYLOAD_TEST),
                     eq(SIG_HEADER_TEST),
-                    eq(ENDPOINT_SECRET)
+                    eq(ENDPOINT_SECRET_TEST)
             ));
         }
     }
 
     @Test
-    @DisplayName("Test constructEvent() method when webhook fails")
-    void constructEvent_WebhookFails_ThrowsException() {
+    @DisplayName("Test constructEvent() method when webhook fails due to invalid signature")
+    void constructEvent_WebhookFails_ThrowsIllegalArgumentException() {
         // Given
         try (MockedStatic<Webhook> mockedWebhook = mockStatic(Webhook.class)) {
             mockedWebhook.when(() -> Webhook.constructEvent(
                             eq(PAYLOAD_TEST),
-                            eq(SIG_HEADER_TEST),
-                            eq(ENDPOINT_SECRET)
+                            eq(INVALID_SIG_HEADER_TEST),
+                            eq(ENDPOINT_SECRET_TEST)
                     ))
-                    .thenThrow(new SignatureVerificationException(
-                            "Invalid signature",
-                            SIG_HEADER_TEST
-                    ));
+                    .thenThrow(new SignatureVerificationException("Invalid signature",
+                            INVALID_SIG_HEADER_TEST));
 
-            // When & Then
-            assertThatThrownBy(() -> stripeClient.constructEvent(
-                    PAYLOAD_TEST,
-                    SIG_HEADER_TEST,
-                    ENDPOINT_SECRET
-            ))
-                    .isInstanceOf(SignatureVerificationException.class)
-                    .hasMessageContaining("Invalid signature");
+            // When + Then
+            assertThatThrownBy(() ->
+                    stripeClient.constructEvent(
+                            PAYLOAD_TEST,
+                            INVALID_SIG_HEADER_TEST,
+                            ENDPOINT_SECRET_TEST
+                    )
+            )
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("Invalid signature");
 
             mockedWebhook.verify(() -> Webhook.constructEvent(
                     eq(PAYLOAD_TEST),
+                    eq(INVALID_SIG_HEADER_TEST),
+                    eq(ENDPOINT_SECRET_TEST)
+            ));
+        }
+    }
+
+    @Test
+    @DisplayName("Test constructEvent() method when webhook fails due to invalid payload")
+    void constructEvent_InvalidPayload_ThrowsIllegalArgumentException() {
+        // Given
+        try (MockedStatic<Webhook> mockedWebhook = mockStatic(Webhook.class)) {
+            mockedWebhook.when(() -> Webhook.constructEvent(
+                            eq(INVALID_PAYLOAD_TEST),
+                            eq(SIG_HEADER_TEST),
+                            eq(ENDPOINT_SECRET_TEST)
+                    ))
+                    .thenThrow(new RuntimeException("Malformed JSON"));
+
+            // When + Then
+            assertThatThrownBy(() ->
+                    stripeClient.constructEvent(
+                            INVALID_PAYLOAD_TEST,
+                            SIG_HEADER_TEST,
+                            ENDPOINT_SECRET_TEST
+                    )
+            )
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("Invalid payload");
+
+            // Verify invocation
+            mockedWebhook.verify(() -> Webhook.constructEvent(
+                    eq(INVALID_PAYLOAD_TEST),
                     eq(SIG_HEADER_TEST),
-                    eq(ENDPOINT_SECRET)
+                    eq(ENDPOINT_SECRET_TEST)
             ));
         }
     }

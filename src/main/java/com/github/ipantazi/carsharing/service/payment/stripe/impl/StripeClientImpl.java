@@ -100,12 +100,21 @@ public class StripeClientImpl implements StripeClient {
     }
 
     @Override
-    public Event constructEvent(String payload, String sigHeader, String endpointSecret)
-            throws SignatureVerificationException {
-        return Webhook.constructEvent(
-                payload,
-                sigHeader,
-                endpointSecret);
+    public Event constructEvent(String payload, String sigHeader, String endpointSecret) {
+        Event event;
+
+        try {
+            event = Webhook.constructEvent(payload, sigHeader, endpointSecret);
+            log.info("✅ Received Stripe event: {}", event.getType());
+        } catch (SignatureVerificationException e) {
+            log.warn("❌ Invalid Stripe signature: {}", e.getMessage());
+            throw new IllegalArgumentException("Invalid signature");
+        } catch (Exception e) {
+            log.warn("❌ Invalid Stripe payload: {}", e.getMessage());
+            throw new IllegalArgumentException("Invalid payload");
+        }
+
+        return event;
     }
 
     @Override
