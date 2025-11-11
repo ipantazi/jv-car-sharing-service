@@ -5,7 +5,7 @@ import static com.github.ipantazi.carsharing.util.TestDataUtil.ENDPOINT_SECRET_T
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.INVALID_SESSION_STATUS;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.PAYLOAD_TEST;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.SESSION_STATUS_COMPLETE;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.SESSION_STATUS_COMPLETED;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.SIG_HEADER_TEST;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestStripeSessionMetadataDto;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -72,7 +72,7 @@ public class StripeWebhookServiceTest {
 
         when(stripeClient.constructEvent(PAYLOAD_TEST, SIG_HEADER_TEST, ENDPOINT_SECRET_TEST))
                 .thenReturn(event);
-        when(event.getType()).thenReturn(SESSION_STATUS_COMPLETE);
+        when(event.getType()).thenReturn(SESSION_STATUS_COMPLETED);
         when(event.getDataObjectDeserializer()).thenReturn(deserializer);
         when(deserializer.getObject()).thenReturn(Optional.of(session));
         when(stripeClient.getMetadataFromSession(session)).thenReturn(metadataDto);
@@ -117,7 +117,7 @@ public class StripeWebhookServiceTest {
     public void processStripeEvent_DeserializationFails_ThrowsException() throws StripeException {
         // Given
         when(stripeClient.constructEvent(anyString(), anyString(), anyString())).thenReturn(event);
-        when(event.getType()).thenReturn(SESSION_STATUS_COMPLETE);
+        when(event.getType()).thenReturn(SESSION_STATUS_COMPLETED);
         when(event.getDataObjectDeserializer()).thenReturn(deserializer);
         when(deserializer.getObject()).thenReturn(Optional.empty());
 
