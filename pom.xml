@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.3</version>
+        <version>3.5.7</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.github.ipantazi</groupId>
@@ -31,18 +31,18 @@
         <maven.checkstyle.plugin.configLocation>checkstyle.xml</maven.checkstyle.plugin.configLocation>
         <lombok.mapstruct.binding.version>0.2.0</lombok.mapstruct.binding.version>
         <org.mapstruct.version>1.6.3</org.mapstruct.version>
-        <lombok.version>1.18.38</lombok.version>
-        <liquibase.version>4.31.1</liquibase.version>
+        <lombok.version>1.18.42</lombok.version>
+        <liquibase.version>5.0.1</liquibase.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <webmvc-ui.version>2.8.6</webmvc-ui.version>
-        <jjwt.version>0.12.6</jjwt.version>
+        <webmvc-ui.version>2.8.13</webmvc-ui.version>
+        <jjwt.version>0.13.0</jjwt.version>
         <assertj.version>4.0.0-M1</assertj.version>
-        <testcontainers.version>1.21.0</testcontainers.version>
-        <org.jacoco.version>0.8.13</org.jacoco.version>
+        <testcontainers.version>2.0.1</testcontainers.version>
+        <org.jacoco.version>0.8.14</org.jacoco.version>
         <maven-checkstyle.version>3.6.0</maven-checkstyle.version>
-        <stripe-java.version>29.2.0</stripe-java.version>
+        <stripe-java.version>29.5.0</stripe-java.version> <!--don't use 30.0.0-->
         <mockito-inline.version>5.2.0</mockito-inline.version>
-        <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
+        <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -63,6 +63,10 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
