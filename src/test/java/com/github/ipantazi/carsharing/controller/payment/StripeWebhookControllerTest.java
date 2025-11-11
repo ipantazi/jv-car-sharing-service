@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.github.ipantazi.carsharing.controller.StripeWebhookController;
@@ -59,7 +60,7 @@ public class StripeWebhookControllerTest {
     }
 
     @Test
-    void postWebhook_WhenSignatureInvalid_ReturnsBadRequest() throws Exception {
+    void handleStripeEvent_WhenSignatureInvalid_ReturnsBadRequest() throws Exception {
         // Given
         doThrow(new SignatureVerificationException("Invalid signature", INVALID_SIG_HEADER_TEST))
                 .when(stripeWebhookService).processStripeEvent(anyString(), anyString());
@@ -79,7 +80,7 @@ public class StripeWebhookControllerTest {
     }
 
     @Test
-    void postWebhook_WhenPayloadInvalid_ReturnsBadRequest() throws Exception {
+    void handleStripeEvent_WhenPayloadInvalid_ReturnsBadRequest() throws Exception {
         // Given
         doThrow(new InvalidStripePayloadException("Invalid payload"))
                 .when(stripeWebhookService).processStripeEvent(anyString(), anyString());
@@ -99,7 +100,7 @@ public class StripeWebhookControllerTest {
     }
 
     @Test
-    void postWebhook_WhenUnexpectedException_ReturnsInternalServerError() throws Exception {
+    void handleStripeEvent_WhenUnexpectedException_ReturnsInternalServerError() throws Exception {
         // Given
         doThrow(new RuntimeException("Unexpected error"))
                 .when(stripeWebhookService).processStripeEvent(anyString(), anyString());
@@ -116,5 +117,37 @@ public class StripeWebhookControllerTest {
 
         // Then
         assertThat(result.getResponse().getStatus()).isEqualTo(INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
+    @DisplayName("Test handleStripeEvent method when payload is blank")
+    void handleStripeEvent_WhenPayloadBlank_ReturnsBadRequest() throws Exception {
+        // When
+        MvcResult result = mockMvc.perform(post(URL_WEBHOOK)
+                        .content("")
+                        .contentType("application/json")
+                        .header("Stripe-Signature", SIG_HEADER_TEST))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid request body"))
+                .andReturn();
+
+        // Then
+        assertThat(result.getResponse().getStatus()).isEqualTo(BAD_REQUEST);
+    }
+
+    @Test
+    @DisplayName("Test handleStripeEvent method when signature is blank")
+    void handleStripeEvent_WhenSignatureBlank_ReturnsBadRequest() throws Exception {
+        // When
+        MvcResult result = mockMvc.perform(post(URL_WEBHOOK)
+                        .content(PAYLOAD_TEST)
+                        .contentType("application/json")
+                        .header("Stripe-Signature", ""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Validation failure"))
+                .andReturn();
+
+        // Then
+        assertThat(result.getResponse().getStatus()).isEqualTo(BAD_REQUEST);
     }
 }
