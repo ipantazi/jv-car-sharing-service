@@ -48,7 +48,9 @@ public class SecurityConfig {
                                         "/v3/api-docs/**",
                                         "/webhook/stripe",
                                         "/payments/success",
-                                        "/payments/cancel"
+                                        "/payments/cancel",
+                                        "/actuator/health",
+                                        "/actuator/health/**"
                                 ).permitAll()
                                 .anyRequest()
                                 .authenticated()
