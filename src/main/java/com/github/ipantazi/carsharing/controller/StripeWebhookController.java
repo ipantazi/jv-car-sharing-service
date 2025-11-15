@@ -5,6 +5,7 @@ import com.github.ipantazi.carsharing.service.payment.stripe.StripeWebhookServic
 import com.stripe.exception.SignatureVerificationException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -29,8 +30,13 @@ public class StripeWebhookController {
             description = "Handles Stripe events (internal use only). Not for public consumption."
     )
     public ResponseEntity<String> handleStripeEvent(
-            @RequestBody String payload,
-            @RequestHeader("Stripe-Signature") String sigHeader
+            @RequestBody
+            @NotBlank(message = "Payload cannot be empty")
+            String payload,
+
+            @RequestHeader("Stripe-Signature")
+            @NotBlank(message = "Signature header cannot be empty")
+            String sigHeader
     ) {
         try {
             stripeWebhookService.processStripeEvent(payload, sigHeader);

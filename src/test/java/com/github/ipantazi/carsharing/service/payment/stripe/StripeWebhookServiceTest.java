@@ -1,11 +1,11 @@
 package com.github.ipantazi.carsharing.service.payment.stripe;
 
 import static com.github.ipantazi.carsharing.util.TestDataUtil.AMOUNT_TO_PAY;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.ENDPOINT_SECRET;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.ENDPOINT_SECRET_TEST;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.INVALID_SESSION_STATUS;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.PAYLOAD_TEST;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.SESSION_STATUS_COMPLETE;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.SESSION_STATUS_COMPLETED;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.SIG_HEADER_TEST;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestStripeSessionMetadataDto;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
 import com.github.ipantazi.carsharing.dto.payment.StripeSessionMetadataDto;
 import com.github.ipantazi.carsharing.exception.InvalidStripePayloadException;
 import com.github.ipantazi.carsharing.service.payment.PaymentService;
+import com.github.ipantazi.carsharing.service.payment.stripe.impl.StripeWebhookServiceImpl;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
@@ -57,7 +58,7 @@ public class StripeWebhookServiceTest {
 
     @BeforeEach
     public void setUp() {
-        ReflectionTestUtils.setField(stripeWebhookService, "endpointSecret", ENDPOINT_SECRET);
+        ReflectionTestUtils.setField(stripeWebhookService, "endpointSecret", ENDPOINT_SECRET_TEST);
     }
 
     @Test
@@ -69,9 +70,9 @@ public class StripeWebhookServiceTest {
                 EXISTING_RENTAL_ID,
                 AMOUNT_TO_PAY);
 
-        when(stripeClient.constructEvent(PAYLOAD_TEST, SIG_HEADER_TEST, ENDPOINT_SECRET))
+        when(stripeClient.constructEvent(PAYLOAD_TEST, SIG_HEADER_TEST, ENDPOINT_SECRET_TEST))
                 .thenReturn(event);
-        when(event.getType()).thenReturn(SESSION_STATUS_COMPLETE);
+        when(event.getType()).thenReturn(SESSION_STATUS_COMPLETED);
         when(event.getDataObjectDeserializer()).thenReturn(deserializer);
         when(deserializer.getObject()).thenReturn(Optional.of(session));
         when(stripeClient.getMetadataFromSession(session)).thenReturn(metadataDto);
@@ -81,7 +82,7 @@ public class StripeWebhookServiceTest {
 
         // Then
         verify(stripeClient, times(1))
-                .constructEvent(PAYLOAD_TEST, SIG_HEADER_TEST, ENDPOINT_SECRET);
+                .constructEvent(PAYLOAD_TEST, SIG_HEADER_TEST, ENDPOINT_SECRET_TEST);
         verify(event, times(1)).getType();
         verify(event, times(1)).getDataObjectDeserializer();
         verify(deserializer, times(1)).getObject();
@@ -95,7 +96,7 @@ public class StripeWebhookServiceTest {
     public void processStripeEvent_SessionNotCompleted_shouldNotHandlePaymentSuccess()
             throws StripeException {
         // Given
-        when(stripeClient.constructEvent(PAYLOAD_TEST, SIG_HEADER_TEST, ENDPOINT_SECRET))
+        when(stripeClient.constructEvent(PAYLOAD_TEST, SIG_HEADER_TEST, ENDPOINT_SECRET_TEST))
                 .thenReturn(event);
         when(event.getType()).thenReturn(INVALID_SESSION_STATUS);
 
@@ -104,8 +105,8 @@ public class StripeWebhookServiceTest {
 
         // Then
         verify(stripeClient, times(1))
-                .constructEvent(PAYLOAD_TEST, SIG_HEADER_TEST, ENDPOINT_SECRET);
-        verify(event, times(1)).getType();
+                .constructEvent(PAYLOAD_TEST, SIG_HEADER_TEST, ENDPOINT_SECRET_TEST);
+        verify(event, times(2)).getType();
         verify(paymentService, never()).handlePaymentSuccess(any());
         verifyNoMoreInteractions(stripeClient, event);
         verifyNoInteractions(deserializer, paymentService);
@@ -116,7 +117,7 @@ public class StripeWebhookServiceTest {
     public void processStripeEvent_DeserializationFails_ThrowsException() throws StripeException {
         // Given
         when(stripeClient.constructEvent(anyString(), anyString(), anyString())).thenReturn(event);
-        when(event.getType()).thenReturn(SESSION_STATUS_COMPLETE);
+        when(event.getType()).thenReturn(SESSION_STATUS_COMPLETED);
         when(event.getDataObjectDeserializer()).thenReturn(deserializer);
         when(deserializer.getObject()).thenReturn(Optional.empty());
 
@@ -129,7 +130,7 @@ public class StripeWebhookServiceTest {
                 .hasMessage("Could not deserialize Stripe session object");
 
         verify(stripeClient, times(1))
-                .constructEvent(PAYLOAD_TEST, SIG_HEADER_TEST, ENDPOINT_SECRET);
+                .constructEvent(PAYLOAD_TEST, SIG_HEADER_TEST, ENDPOINT_SECRET_TEST);
         verify(event, times(1)).getType();
         verify(event, times(1)).getDataObjectDeserializer();
         verify(deserializer, times(1)).getObject();

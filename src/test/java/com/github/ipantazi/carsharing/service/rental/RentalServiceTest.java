@@ -1,24 +1,32 @@
 package com.github.ipantazi.carsharing.service.rental;
 
 import static com.github.ipantazi.carsharing.util.TestDataUtil.ACTUAL_RETURN_DATE;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_CAR_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_ID_ANOTHER_USER;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.FIXED_DATE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.FIXED_INSTANT;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.MIN_RENTAL_DAYS;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.RENTAL_DATE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.RENTAL_DTO_IGNORING_FIELDS;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.RENTAL_PAGEABLE;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.RETURN_DATE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.ZONE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createNewTestRentalResponseDto;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestNewRentalPayload;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRental;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRentalDetailedDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRentalDetailedDtoWithPenalty;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRentalRequestDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRentalResponseDto;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserResponseDto;
 import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.assertObjectsAreEqualIgnoringFields;
 import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.assertPageMetadataEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -32,14 +40,24 @@ import com.github.ipantazi.carsharing.dto.enums.RentalStatus;
 import com.github.ipantazi.carsharing.dto.rental.RentalDetailedDto;
 import com.github.ipantazi.carsharing.dto.rental.RentalRequestDto;
 import com.github.ipantazi.carsharing.dto.rental.RentalResponseDto;
+import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
+import com.github.ipantazi.carsharing.exception.CarNotAvailableException;
 import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
+import com.github.ipantazi.carsharing.exception.InvalidRentalDatesException;
+import com.github.ipantazi.carsharing.exception.PendingPaymentsExistException;
 import com.github.ipantazi.carsharing.mapper.RentalMapper;
 import com.github.ipantazi.carsharing.model.Rental;
+import com.github.ipantazi.carsharing.notification.NotificationMapper;
+import com.github.ipantazi.carsharing.notification.NotificationService;
+import com.github.ipantazi.carsharing.notification.NotificationType;
+import com.github.ipantazi.carsharing.notification.dto.NewRentalPayload;
 import com.github.ipantazi.carsharing.repository.rental.RentalRepository;
 import com.github.ipantazi.carsharing.repository.rental.RentalSpecificationBuilder;
 import com.github.ipantazi.carsharing.service.car.CarServiceImpl;
 import com.github.ipantazi.carsharing.service.car.InventoryServiceImpl;
 import com.github.ipantazi.carsharing.service.payment.PaymentValidator;
+import com.github.ipantazi.carsharing.service.rental.impl.RentalServiceImpl;
+import com.github.ipantazi.carsharing.service.user.UserService;
 import java.time.Clock;
 import java.util.Collections;
 import java.util.List;
@@ -77,6 +95,12 @@ public class RentalServiceTest {
     private Calculator calculator;
     @Mock
     private Clock clock;
+    @Mock
+    private UserService userService;
+    @Mock
+    private NotificationService notificationService;
+    @Mock
+    private NotificationMapper notificationMapper;
     @InjectMocks
     private RentalServiceImpl rentalService;
 
@@ -85,15 +109,19 @@ public class RentalServiceTest {
     public void createRental_ValidData_ReturnsRentalResponseDto() {
         // Given
         RentalResponseDto expectedRentalResponseDto = createNewTestRentalResponseDto(
-                EXISTING_USER_ID);
+                EXISTING_USER_ID, RENTAL_DATE);
         Rental rental = createTestRental(expectedRentalResponseDto);
         RentalRequestDto rentalRequestDto = createTestRentalRequestDto(expectedRentalResponseDto);
         CarDto carDto = expectedRentalResponseDto.getCarDto();
+        UserResponseDto userDto = createTestUserResponseDto(expectedRentalResponseDto.getUserId());
+        NewRentalPayload rentalPayload = createTestNewRentalPayload(rental);
 
         when(clock.getZone()).thenReturn(ZONE);
-        when(clock.instant()).thenReturn(FIXED_INSTANT);
+        when(clock.instant()).thenReturn(RENTAL_DATE.atStartOfDay(ZONE).toInstant());
         when(rentalMapper.toRentalEntity(rentalRequestDto)).thenReturn(rental);
         when(carService.getById(rental.getCarId())).thenReturn(carDto);
+        when(userService.getUserDetails(expectedRentalResponseDto.getUserId())).thenReturn(userDto);
+        when(notificationMapper.toRentalPayload(rental, userDto, carDto)).thenReturn(rentalPayload);
         when(rentalMapper.toRentalDto(rental)).thenReturn(expectedRentalResponseDto);
         when(calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental))
                 .thenReturn(expectedRentalResponseDto.getBaseRentalCost());
@@ -112,21 +140,117 @@ public class RentalServiceTest {
         );
         verify(paymentValidator, times(1)).checkForPendingPayments(EXISTING_USER_ID);
         verify(rentalValidator, times(1))
-                .checkDatesBeforeRenting(rentalRequestDto, FIXED_DATE);
+                .checkDatesBeforeRenting(rentalRequestDto, RENTAL_DATE);
         verify(carService, times(1)).validateCarAvailableForRental(rental.getCarId());
         verify(rentalMapper, times(1)).toRentalEntity(rentalRequestDto);
         verify(rentalRepository, times(1)).save(rental);
         verify(inventoryService, times(1))
                 .adjustInventory(rentalRequestDto.carId(), 1, OperationType.DECREASE);
         verify(carService, times(1)).getById(rental.getCarId());
+        verify(userService, times(1)).getUserDetails(expectedRentalResponseDto.getUserId());
+        verify(notificationMapper, times(1)).toRentalPayload(rental, userDto, carDto);
+        verify(notificationService, times(1))
+                .sendMessage(NotificationType.NEW_RENTAL_CREATED, rentalPayload);
         verify(rentalMapper, times(1)).toRentalDto(rental);
         verify(calculator, times(1)).calculateBaseRentalCost(carDto.getDailyFee(), rental);
         verifyNoMoreInteractions(carService, paymentValidator, rentalValidator, rentalMapper);
         verifyNoMoreInteractions(rentalRepository, inventoryService, calculator);
+        verifyNoMoreInteractions(userService, notificationService, notificationMapper);
     }
 
     @Test
-    @DisplayName("Test getRentalsByFilter()")
+    @DisplayName("Test createRental() with invalid return date")
+    public void createRental_InvalidReturnDate_ThrowsException() {
+        // Given
+        RentalRequestDto rentalRequestDto = new RentalRequestDto(RETURN_DATE, EXISTING_CAR_ID);
+
+        when(clock.getZone()).thenReturn(ZONE);
+        when(clock.instant()).thenReturn(RENTAL_DATE.atStartOfDay(ZONE).toInstant());
+        doThrow(new InvalidRentalDatesException(
+                "Return date must be no earlier than %d day in the future"
+                        .formatted(MIN_RENTAL_DAYS)
+        )).when(rentalValidator).checkDatesBeforeRenting(rentalRequestDto, RENTAL_DATE);
+
+        // When & Then
+        assertThatThrownBy(() -> rentalService.createRental(EXISTING_USER_ID, rentalRequestDto))
+                .isInstanceOf(InvalidRentalDatesException.class)
+                .hasMessage("Return date must be no earlier than %d day in the future"
+                        .formatted(MIN_RENTAL_DAYS));
+
+        verify(rentalValidator, times(1))
+                .checkDatesBeforeRenting(rentalRequestDto, RENTAL_DATE);
+        verify(rentalRepository, never()).save(any());
+        verify(inventoryService, never())
+                .adjustInventory(rentalRequestDto.carId(), 1, OperationType.DECREASE);
+
+        verifyNoMoreInteractions(rentalValidator);
+        verifyNoInteractions(carService, paymentValidator, rentalMapper, rentalRepository);
+        verifyNoInteractions(inventoryService, calculator);
+        verifyNoInteractions(userService, notificationService, notificationMapper);
+    }
+
+    @Test
+    @DisplayName("Test createRental() when car is not available for renting")
+    public void createRental_CarNotAvailableForRenting_ThrowsException() {
+        // Given
+        RentalRequestDto rentalRequestDto = new RentalRequestDto(RETURN_DATE, EXISTING_CAR_ID);
+
+        when(clock.getZone()).thenReturn(ZONE);
+        when(clock.instant()).thenReturn(RENTAL_DATE.atStartOfDay(ZONE).toInstant());
+        doThrow(new CarNotAvailableException(
+                "Car with id: %d is not available for rental."
+                        .formatted(rentalRequestDto.carId())
+        )).when(carService).validateCarAvailableForRental(rentalRequestDto.carId());
+
+        // When & Then
+        assertThatThrownBy(() -> rentalService.createRental(EXISTING_USER_ID, rentalRequestDto))
+                .isInstanceOf(CarNotAvailableException.class)
+                .hasMessage("Car with id: %d is not available for rental."
+                        .formatted(rentalRequestDto.carId()));
+
+        verify(rentalValidator, times(1)).checkDatesBeforeRenting(rentalRequestDto, RENTAL_DATE);
+        verify(carService, times(1)).validateCarAvailableForRental(rentalRequestDto.carId());
+        verify(rentalRepository, never()).save(any());
+        verify(inventoryService, never())
+                .adjustInventory(rentalRequestDto.carId(), 1, OperationType.DECREASE);
+
+        verifyNoMoreInteractions(rentalValidator, carService);
+        verifyNoInteractions(paymentValidator, rentalMapper, rentalRepository);
+        verifyNoInteractions(inventoryService, calculator);
+        verifyNoInteractions(userService, notificationService, notificationMapper);
+    }
+
+    @Test
+    @DisplayName("Test createRental() when user has pending payments")
+    public void createRental_UserHasPendingPayments_ThrowsException() {
+        // Given
+        RentalRequestDto rentalRequestDto = new RentalRequestDto(RETURN_DATE, EXISTING_CAR_ID);
+
+        when(clock.getZone()).thenReturn(ZONE);
+        when(clock.instant()).thenReturn(RENTAL_DATE.atStartOfDay(ZONE).toInstant());
+        doThrow(new PendingPaymentsExistException("User has pending payments"))
+                .when(paymentValidator).checkForPendingPayments(EXISTING_USER_ID);
+
+        // When & Then
+        assertThatThrownBy(() -> rentalService.createRental(EXISTING_USER_ID, rentalRequestDto))
+                .isInstanceOf(PendingPaymentsExistException.class)
+                .hasMessage("User has pending payments");
+
+        verify(rentalValidator, times(1)).checkDatesBeforeRenting(rentalRequestDto, RENTAL_DATE);
+        verify(carService, times(1)).validateCarAvailableForRental(rentalRequestDto.carId());
+        verify(paymentValidator, times(1)).checkForPendingPayments(EXISTING_USER_ID);
+        verify(rentalRepository, never()).save(any());
+        verify(inventoryService, never())
+                .adjustInventory(rentalRequestDto.carId(), 1, OperationType.DECREASE);
+
+        verifyNoMoreInteractions(rentalValidator, carService, paymentValidator);
+        verifyNoInteractions(rentalMapper, rentalRepository);
+        verifyNoInteractions(inventoryService, calculator);
+        verifyNoInteractions(userService, notificationService, notificationMapper);
+    }
+
+    @Test
+    @DisplayName("Test getRentalsByFilter() with valid data and active rentals")
     public void getRentalsByFilter_ValidDataAndActiveRentals_ReturnsRentalResponseDtoPage() {
         // Given
         Boolean isActive = true;

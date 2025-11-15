@@ -3,18 +3,26 @@ package com.github.ipantazi.carsharing.service.rental;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.ACTUAL_RETURN_DATE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.ACTUAL_RETURN_DATE_AFTER_RETURN_DATE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_DAILY_FEE;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.DAYS_OVERDUE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_USER_ID;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.FIXED_DATE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.LATE_FEE_MULTIPLIER;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.RETURN_DATE;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.RETURN_DATE_BEFORE_FIXED_DATE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRental;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.github.ipantazi.carsharing.model.Payment;
 import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.repository.car.CarRepository;
 import com.github.ipantazi.carsharing.repository.payment.PaymentRepository;
+import com.github.ipantazi.carsharing.service.rental.impl.CalculatorImpl;
 import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -204,6 +212,8 @@ public class CalculatorTest {
 
         // Then
         assertThat(actual).isEqualTo(expected);
+        verify(carRepository, times(1)).findDailyFeeByCarId(rental.getCarId());
+        verifyNoMoreInteractions(carRepository);
     }
 
     @Test
@@ -225,6 +235,8 @@ public class CalculatorTest {
 
         // Then
         assertThat(actual).isEqualTo(expected);
+        verify(carRepository, times(1)).findDailyFeeByCarId(rental.getCarId());
+        verifyNoMoreInteractions(carRepository);
     }
 
     @Test
@@ -240,6 +252,9 @@ public class CalculatorTest {
         assertThatThrownBy(() -> calculator.calculateAmountToPayByType(rental, type))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Car not found");
+
+        verify(carRepository, times(1)).findDailyFeeByCarId(rental.getCarId());
+        verifyNoMoreInteractions(carRepository);
     }
 
     @Test
@@ -257,6 +272,9 @@ public class CalculatorTest {
 
         // Then
         assertThat(actual).isEqualTo(expected);
+        verify(paymentRepository, times(1))
+                .sumAmountToPayByRentalIdAndStatus(EXISTING_RENTAL_ID, status);
+        verifyNoMoreInteractions(paymentRepository);
     }
 
     @Test
@@ -273,5 +291,57 @@ public class CalculatorTest {
 
         // Then
         assertThat(actual).isEqualTo(BigDecimal.ZERO);
+        verify(paymentRepository, times(1))
+                .sumAmountToPayByRentalIdAndStatus(EXISTING_RENTAL_ID, status);
+        verifyNoMoreInteractions(paymentRepository);
+    }
+
+    @Test
+    @DisplayName("Test calculateDaysOverdue() method when today is after return date")
+    public void calculateDaysOverdue_TodayAfterReturnDate_ReturnsNumberOfDaysLate() {
+        // When
+        long daysOverdue = calculator.calculateDaysOverdue(RETURN_DATE_BEFORE_FIXED_DATE,
+                FIXED_DATE);
+
+        // Then
+        assertThat(daysOverdue).isEqualTo(DAYS_OVERDUE);
+    }
+
+    @Test
+    @DisplayName("Test calculateDaysOverdue() method when today is before return date")
+    public void calculateDaysOverdue_TodayBeforeReturnDate_ThrowsException() {
+        // When
+        long daysOverdue = calculator.calculateDaysOverdue(RETURN_DATE, FIXED_DATE);
+
+        // Then
+        assertThat(daysOverdue).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("Test calculateDaysOverdue() method when today is equal to return date")
+    public void calculateDaysOverdue_TodayEqualsReturnDate_ThrowsException() {
+        // When
+        long daysOverdue = calculator.calculateDaysOverdue(RETURN_DATE, RETURN_DATE);
+
+        // Then
+        assertThat(daysOverdue).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("Test calculateDaysOverdue() method when return date is null")
+    public void calculateDaysOverdue_NullReturnDate_ThrowsException() {
+        // When & Then
+        assertThatThrownBy(() -> calculator.calculateDaysOverdue(null, FIXED_DATE))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Return date or today cannot be null");
+    }
+
+    @Test
+    @DisplayName("Test calculateDaysOverdue() method when today is null")
+    public void calculateDaysOverdue_NullToday_ThrowsException() {
+        // When & Then
+        assertThatThrownBy(() -> calculator.calculateDaysOverdue(RETURN_DATE, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Return date or today cannot be null");
     }
 }

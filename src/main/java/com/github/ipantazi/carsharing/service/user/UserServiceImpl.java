@@ -107,6 +107,13 @@ public class UserServiceImpl implements UserService {
         return isManager(userId) || userId.equals(rentalUserId);
     }
 
+    @Override
+    public String getEmailByRentalId(Long rentalId) {
+        return userRepository.getEmailByRentalId(rentalId).orElseThrow(
+                () -> new EntityNotFoundException("User email not found with rental id: "
+                        + rentalId));
+    }
+
     private boolean isManager(Long userId) {
         return getUserById(userId).getRole().equals(User.Role.MANAGER);
     }

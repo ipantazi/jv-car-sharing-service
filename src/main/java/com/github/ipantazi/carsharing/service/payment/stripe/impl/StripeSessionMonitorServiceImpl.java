@@ -1,7 +1,9 @@
-package com.github.ipantazi.carsharing.service.payment.stripe;
+package com.github.ipantazi.carsharing.service.payment.stripe.impl;
 
 import com.github.ipantazi.carsharing.model.Payment;
 import com.github.ipantazi.carsharing.repository.payment.PaymentRepository;
+import com.github.ipantazi.carsharing.service.payment.stripe.StripeClient;
+import com.github.ipantazi.carsharing.service.payment.stripe.StripeSessionMonitorService;
 import com.stripe.exception.StripeException;
 import java.util.ArrayList;
 import java.util.List;

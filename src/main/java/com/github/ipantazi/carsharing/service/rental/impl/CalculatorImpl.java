@@ -1,9 +1,10 @@
-package com.github.ipantazi.carsharing.service.rental;
+package com.github.ipantazi.carsharing.service.rental.impl;
 
 import com.github.ipantazi.carsharing.model.Payment;
 import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.repository.car.CarRepository;
 import com.github.ipantazi.carsharing.repository.payment.PaymentRepository;
+import com.github.ipantazi.carsharing.service.rental.Calculator;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -60,6 +61,17 @@ public class CalculatorImpl implements Calculator {
     @Override
     public BigDecimal calculateTotalAmountPaid(Long rentalId) {
         return paymentRepository.sumAmountToPayByRentalIdAndStatus(rentalId, Payment.Status.PAID);
+    }
+
+    @Override
+    public long calculateDaysOverdue(LocalDate returnDate, LocalDate today) {
+        if (returnDate == null || today == null) {
+            throw new IllegalArgumentException("Return date or today cannot be null");
+        }
+        if (today.isAfter(returnDate)) {
+            return ChronoUnit.DAYS.between(returnDate, today);
+        }
+        return 0;
     }
 
     private void validateInputs(BigDecimal dailyFee, Rental rental) {

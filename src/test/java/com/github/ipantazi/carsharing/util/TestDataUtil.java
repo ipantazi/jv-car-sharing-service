@@ -20,6 +20,9 @@ import com.github.ipantazi.carsharing.model.Car;
 import com.github.ipantazi.carsharing.model.Payment;
 import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.model.User;
+import com.github.ipantazi.carsharing.notification.dto.NewRentalPayload;
+import com.github.ipantazi.carsharing.notification.dto.OverdueRentalPayload;
+import com.github.ipantazi.carsharing.notification.dto.PaymentPayload;
 import com.github.ipantazi.carsharing.security.CustomUserDetails;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -67,6 +70,7 @@ public class TestDataUtil {
 
     public static final String EMAIL_DOMAIN = "@example.com";
     public static final String NEW_EMAIL = NEW_USER_ID + EMAIL_DOMAIN;
+    public static final String EXISTING_EMAIL = EXISTING_USER_ID + EMAIL_DOMAIN;
     public static final String NOT_HASHED_PASSWORD = "Test&password1";
     public static final String NOT_EXISTING_NOT_HASHED_PASSWORD = "Not&existingPassword1";
     public static final String NEW_NOT_HASHED_PASSWORD = "New&password1";
@@ -89,6 +93,8 @@ public class TestDataUtil {
     public static final LocalDate RETURN_DATE_BEFORE_FIXED_DATE = FIXED_DATE.minusDays(2);
     public static final LocalDate ACTUAL_RETURN_DATE_AFTER_RETURN_DATE =
             RETURN_DATE.plusDays(1);
+    public static final long DAYS_OVERDUE = ChronoUnit.DAYS.between(RETURN_DATE_BEFORE_FIXED_DATE,
+            FIXED_DATE);
 
     public static final long EXPIRY_SECONDS = 86400;
     public static final Clock FIXED_CLOCK = Clock.fixed(FIXED_INSTANT, ZONE);
@@ -119,8 +125,14 @@ public class TestDataUtil {
 
     public static final String PAYLOAD_TEST = "{\"id\":\"TEST\"}";
     public static final String SIG_HEADER_TEST = "t=123,v1=TEST";
-    public static final String ENDPOINT_SECRET = "whsec_test_secret";
-    public static final String SESSION_STATUS_COMPLETE = "checkout.session.completed";
+    public static final String ENDPOINT_SECRET_TEST = "whsec_test_secret";
+    public static final String SESSION_STATUS_COMPLETED = "checkout.session.completed";
+
+    public static final String TELEGRAM_BOT_TOKEN_TEST = "token-test";
+    public static final String TELEGRAM_CHAT_ID_TEST = "chatId-test";
+    public static final String TELEGRAM_MESSAGE_TEST = "test text & <message>";
+    public static final String ESCAPED_MESSAGE_TEST = "test text &amp; &lt;message&gt;";
+    public static final String NO_RENTALS_OVERDUE_MESSAGE = "✅ No rentals overdue today!";
 
     public static final String UPDATED = "Updated ";
     public static final String UPDATED_STATUS = "SUV";
@@ -403,11 +415,11 @@ public class TestDataUtil {
         return dto;
     }
 
-    public static RentalResponseDto createNewTestRentalResponseDto(Long id) {
+    public static RentalResponseDto createNewTestRentalResponseDto(Long id, LocalDate rentalDate) {
         RentalResponseDto dto = new RentalResponseDto();
         dto.setId(id);
         dto.setUserId(id);
-        dto.setRentalDate(String.valueOf(FIXED_DATE));
+        dto.setRentalDate(String.valueOf(rentalDate));
         dto.setReturnDate(String.valueOf(LocalDate.parse(dto.getRentalDate())
                 .plusDays(NUMBER_OF_RENTAL_DAYS)));
         dto.setBaseRentalCost(BigDecimal.valueOf(id * NUMBER_OF_RENTAL_DAYS)
@@ -520,6 +532,16 @@ public class TestDataUtil {
         rental.setRentalDate(RENTAL_DATE);
         rental.setReturnDate(RETURN_DATE);
         rental.setActualReturnDate(actualReturnDate);
+        return rental;
+    }
+
+    public static Rental createTestOverdueRental(Long id) {
+        Rental rental = new Rental();
+        rental.setId(id);
+        rental.setUserId(id);
+        rental.setCarId(id);
+        rental.setRentalDate(RENTAL_DATE);
+        rental.setReturnDate(RETURN_DATE_BEFORE_FIXED_DATE);
         return rental;
     }
 
@@ -638,6 +660,66 @@ public class TestDataUtil {
                 Payment.Type.PAYMENT,
                 amountToPay,
                 EXISTING_SESSION_URL
+        );
+    }
+
+    public static PaymentPayload createTestPaymentPayload(Payment payment) {
+        return new PaymentPayload(
+                payment.getId(),
+                payment.getRentalId(),
+                EXISTING_EMAIL,
+                payment.getAmountToPay(),
+                payment.getType()
+        );
+    }
+
+    public static PaymentPayload createTestPaymentPayload(Long id) {
+        return new PaymentPayload(
+                id,
+                EXISTING_RENTAL_ID,
+                EXISTING_EMAIL,
+                AMOUNT_TO_PAY,
+                Payment.Type.PAYMENT
+        );
+    }
+
+    public static NewRentalPayload createTestNewRentalPayload(Rental rental) {
+        return new NewRentalPayload(
+                rental.getId(),
+                EXISTING_EMAIL,
+                FIRST_NAME,
+                LAST_NAME,
+                CAR_MODEL,
+                CAR_BRAND,
+                CAR_TYPE,
+                rental.getRentalDate(),
+                rental.getReturnDate()
+        );
+    }
+
+    public static NewRentalPayload createTestNewRentalPayload(Long id) {
+        return new NewRentalPayload(
+                id,
+                EXISTING_EMAIL,
+                FIRST_NAME,
+                LAST_NAME,
+                CAR_MODEL,
+                CAR_BRAND,
+                CAR_TYPE,
+                RENTAL_DATE,
+                RETURN_DATE
+        );
+    }
+
+    public static OverdueRentalPayload createTestOverdueRentalPayload(Long id) {
+        return new OverdueRentalPayload(
+                id,
+                EXISTING_EMAIL,
+                CAR_MODEL,
+                CAR_BRAND,
+                CAR_TYPE,
+                RETURN_DATE_BEFORE_FIXED_DATE,
+                DAYS_OVERDUE
         );
     }
 }

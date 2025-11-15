@@ -1,9 +1,10 @@
-package com.github.ipantazi.carsharing.service.payment.stripe;
+package com.github.ipantazi.carsharing.service.payment.stripe.impl;
 
 import com.github.ipantazi.carsharing.dto.payment.PaymentRequestDto;
 import com.github.ipantazi.carsharing.dto.payment.StripeSessionMetadataDto;
 import com.github.ipantazi.carsharing.exception.InvalidStripePayloadException;
 import com.github.ipantazi.carsharing.model.Payment;
+import com.github.ipantazi.carsharing.service.payment.stripe.StripeClient;
 import com.stripe.Stripe;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
@@ -99,12 +100,21 @@ public class StripeClientImpl implements StripeClient {
     }
 
     @Override
-    public Event constructEvent(String payload, String sigHeader, String endpointSecret)
-            throws SignatureVerificationException {
-        return Webhook.constructEvent(
-                payload,
-                sigHeader,
-                endpointSecret);
+    public Event constructEvent(String payload, String sigHeader, String endpointSecret) {
+        Event event;
+
+        try {
+            event = Webhook.constructEvent(payload, sigHeader, endpointSecret);
+            log.info("✅ Received Stripe event: {}", event.getType());
+        } catch (SignatureVerificationException e) {
+            log.warn("❌ Invalid Stripe signature: {}", e.getMessage());
+            throw new IllegalArgumentException("Invalid signature");
+        } catch (Exception e) {
+            log.warn("❌ Invalid Stripe payload: {}", e.getMessage());
+            throw new IllegalArgumentException("Invalid payload");
+        }
+
+        return event;
     }
 
     @Override

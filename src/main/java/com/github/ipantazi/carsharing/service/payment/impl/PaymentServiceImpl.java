@@ -1,4 +1,4 @@
-package com.github.ipantazi.carsharing.service.payment;
+package com.github.ipantazi.carsharing.service.payment.impl;
 
 import com.github.ipantazi.carsharing.dto.payment.PaymentRequestDto;
 import com.github.ipantazi.carsharing.dto.payment.PaymentResponseDto;
@@ -10,10 +10,17 @@ import com.github.ipantazi.carsharing.exception.PendingPaymentsExistException;
 import com.github.ipantazi.carsharing.mapper.PaymentMapper;
 import com.github.ipantazi.carsharing.model.Payment;
 import com.github.ipantazi.carsharing.model.Rental;
+import com.github.ipantazi.carsharing.notification.NotificationMapper;
+import com.github.ipantazi.carsharing.notification.NotificationService;
+import com.github.ipantazi.carsharing.notification.NotificationType;
+import com.github.ipantazi.carsharing.notification.dto.PaymentPayload;
 import com.github.ipantazi.carsharing.repository.payment.PaymentRepository;
+import com.github.ipantazi.carsharing.service.payment.PaymentService;
+import com.github.ipantazi.carsharing.service.payment.PaymentValidator;
 import com.github.ipantazi.carsharing.service.payment.stripe.StripeClient;
 import com.github.ipantazi.carsharing.service.rental.Calculator;
 import com.github.ipantazi.carsharing.service.rental.RentalService;
+import com.github.ipantazi.carsharing.service.user.UserService;
 import com.stripe.exception.StripeException;
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -39,6 +46,9 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentMapper paymentMapper;
     private final Calculator calculator;
     private final PaymentValidator paymentValidator;
+    private final NotificationService notificationService;
+    private final NotificationMapper notificationMapper;
+    private final UserService userService;
 
     @Override
     @Transactional(readOnly = true)
@@ -135,7 +145,17 @@ public class PaymentServiceImpl implements PaymentService {
                 log.warn("Webhook received for session {} without URL", sessionId);
             }
         }
+
         paymentRepository.save(payment);
+
+        PaymentPayload paymentPayload = notificationMapper.toPaymentPayload(
+                payment,
+                userService.getEmailByRentalId(payment.getRentalId())
+        );
+        notificationService.sendMessage(
+                NotificationType.PAYMENT_SUCCESSFUL,
+                paymentPayload
+        );
     }
 
     private StripeSessionMetadataDto createStripeSession(

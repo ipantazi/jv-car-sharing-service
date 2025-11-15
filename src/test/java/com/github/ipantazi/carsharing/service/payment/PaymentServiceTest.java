@@ -1,5 +1,6 @@
 package com.github.ipantazi.carsharing.service.payment;
 
+import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_EMAIL;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_ID_ANOTHER_USER;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_PAYMENT_WITH_ID_101;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_USER_ID;
@@ -10,6 +11,7 @@ import static com.github.ipantazi.carsharing.util.TestDataUtil.PAYMENT_IGNORING_
 import static com.github.ipantazi.carsharing.util.TestDataUtil.PAYMENT_PAGEABLE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createNewTestPaymentResponseDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestPayment;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestPaymentPayload;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestPaymentResponseDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRental;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestStripeSessionMetadataDto;
@@ -36,10 +38,16 @@ import com.github.ipantazi.carsharing.exception.PendingPaymentsExistException;
 import com.github.ipantazi.carsharing.mapper.PaymentMapper;
 import com.github.ipantazi.carsharing.model.Payment;
 import com.github.ipantazi.carsharing.model.Rental;
+import com.github.ipantazi.carsharing.notification.NotificationMapper;
+import com.github.ipantazi.carsharing.notification.NotificationService;
+import com.github.ipantazi.carsharing.notification.NotificationType;
+import com.github.ipantazi.carsharing.notification.dto.PaymentPayload;
 import com.github.ipantazi.carsharing.repository.payment.PaymentRepository;
+import com.github.ipantazi.carsharing.service.payment.impl.PaymentServiceImpl;
 import com.github.ipantazi.carsharing.service.payment.stripe.StripeClient;
 import com.github.ipantazi.carsharing.service.rental.Calculator;
 import com.github.ipantazi.carsharing.service.rental.RentalService;
+import com.github.ipantazi.carsharing.service.user.UserService;
 import com.stripe.exception.StripeException;
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -70,6 +78,12 @@ public class PaymentServiceTest {
     private StripeClient stripeClient;
     @Mock
     private PaymentValidator paymentValidator;
+    @Mock
+    private NotificationService notificationService;
+    @Mock
+    private NotificationMapper notificationMapper;
+    @Mock
+    private UserService userService;
     @InjectMocks
     private PaymentServiceImpl paymentService;
 
@@ -769,11 +783,15 @@ public class PaymentServiceTest {
     public void handlePaymentSuccess_PaymentHasStatusPending_Success() {
         // Given
         Payment payment = createTestPayment(EXISTING_PAYMENT_WITH_ID_101, Payment.Status.PENDING);
-        StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(payment);
+        PaymentPayload paymentPayload = createTestPaymentPayload(payment);
+        final StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(payment);
 
         when(paymentRepository.findPaymentBySessionId(payment.getSessionId()))
                 .thenReturn(Optional.of(payment));
         when(paymentRepository.save(payment)).thenReturn(payment);
+        when(userService.getEmailByRentalId(payment.getRentalId())).thenReturn(EXISTING_EMAIL);
+        when(notificationMapper.toPaymentPayload(payment, EXISTING_EMAIL))
+                .thenReturn(paymentPayload);
 
         // When
         paymentService.handlePaymentSuccess(metadataDto);
@@ -784,7 +802,12 @@ public class PaymentServiceTest {
         verify(paymentRepository, times(1)).findPaymentBySessionId(payment.getSessionId());
         verify(paymentValidator, times(1)).checkingAmountToPay(metadataDto, payment);
         verify(paymentRepository, times(1)).save(payment);
+        verify(userService, times(1)).getEmailByRentalId(payment.getRentalId());
+        verify(notificationMapper, times(1)).toPaymentPayload(payment, EXISTING_EMAIL);
+        verify(notificationService, times(1))
+                .sendMessage(NotificationType.PAYMENT_SUCCESSFUL, paymentPayload);
         verifyNoMoreInteractions(paymentRepository, paymentValidator);
+        verifyNoMoreInteractions(userService, notificationMapper, notificationService);
     }
 
     @Test
@@ -792,11 +815,15 @@ public class PaymentServiceTest {
     public void handlePaymentSuccess_PaymentHasStatusExpired_Success() {
         // Given
         Payment payment = createTestPayment(EXISTING_PAYMENT_WITH_ID_101, Payment.Status.EXPIRED);
-        StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(payment);
+        PaymentPayload paymentPayload = createTestPaymentPayload(payment);
+        final StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(payment);
 
         when(paymentRepository.findPaymentBySessionId(payment.getSessionId()))
                 .thenReturn(Optional.of(payment));
         when(paymentRepository.save(payment)).thenReturn(payment);
+        when(userService.getEmailByRentalId(payment.getRentalId())).thenReturn(EXISTING_EMAIL);
+        when(notificationMapper.toPaymentPayload(payment, EXISTING_EMAIL))
+                .thenReturn(paymentPayload);
 
         // When
         paymentService.handlePaymentSuccess(metadataDto);
@@ -807,7 +834,12 @@ public class PaymentServiceTest {
         verify(paymentRepository, times(1)).findPaymentBySessionId(payment.getSessionId());
         verify(paymentValidator, times(1)).checkingAmountToPay(metadataDto, payment);
         verify(paymentRepository, times(1)).save(payment);
+        verify(userService, times(1)).getEmailByRentalId(payment.getRentalId());
+        verify(notificationMapper, times(1)).toPaymentPayload(payment, EXISTING_EMAIL);
+        verify(notificationService, times(1))
+                .sendMessage(NotificationType.PAYMENT_SUCCESSFUL, paymentPayload);
         verifyNoMoreInteractions(paymentRepository, paymentValidator);
+        verifyNoMoreInteractions(userService, notificationMapper, notificationService);
     }
 
     @Test
@@ -827,7 +859,8 @@ public class PaymentServiceTest {
         verify(paymentRepository, times(1)).findPaymentBySessionId(payment.getSessionId());
         verify(paymentRepository, never()).save(payment);
         verifyNoMoreInteractions(paymentRepository);
-        verifyNoInteractions(paymentValidator);
+        verifyNoInteractions(paymentValidator, userService);
+        verifyNoInteractions(notificationMapper, notificationService);
     }
 
     @Test
@@ -835,13 +868,19 @@ public class PaymentServiceTest {
     public void handlePaymentSuccess_PaymentNotFound_CreatesNewPayment() {
         // Given
         Payment expectedPayment = createTestPayment(
-                EXISTING_PAYMENT_WITH_ID_101,
+                NEW_PAYMENT_ID,
                 Payment.Status.PAID
         );
-        StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(expectedPayment);
+        PaymentPayload paymentPayload = createTestPaymentPayload(expectedPayment);
+        final StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(
+                expectedPayment);
 
         when(paymentRepository.findPaymentBySessionId(expectedPayment.getSessionId()))
                 .thenReturn(Optional.empty());
+        when(userService.getEmailByRentalId(expectedPayment.getRentalId()))
+                .thenReturn(EXISTING_EMAIL);
+        when(notificationMapper.toPaymentPayload(any(Payment.class), anyString()))
+                .thenReturn(paymentPayload);
 
         // When
         paymentService.handlePaymentSuccess(metadataDto);
@@ -857,6 +896,11 @@ public class PaymentServiceTest {
                 expectedPayment,
                 PAYMENT_IGNORING_FIELDS);
 
+        verify(userService, times(1)).getEmailByRentalId(expectedPayment.getRentalId());
+        verify(notificationMapper, times(1)).toPaymentPayload(any(Payment.class), anyString());
+        verify(notificationService, times(1))
+                .sendMessage(NotificationType.PAYMENT_SUCCESSFUL, paymentPayload);
         verifyNoMoreInteractions(paymentRepository, paymentValidator);
+        verifyNoMoreInteractions(userService, notificationMapper, notificationService);
     }
 }

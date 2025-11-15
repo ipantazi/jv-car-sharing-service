@@ -1,9 +1,13 @@
 package com.github.ipantazi.carsharing.repository.user;
 
+import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_EMAIL;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_USER_ID;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.SAFE_DELETED_USER_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,10 +17,18 @@ import org.springframework.test.context.jdbc.Sql;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Sql(scripts = "classpath:database/users/insert-test-users.sql",
-        executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
-@Sql(scripts = "classpath:database/users/clear-all-users.sql",
-        executionPhase = Sql.ExecutionPhase.AFTER_TEST_CLASS)
+@Sql(scripts = {
+        "classpath:database/cars/insert-test-cars.sql",
+        "classpath:database/users/insert-test-users.sql",
+        "classpath:database/rentals/insert-test-rentals.sql"
+},
+        executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+@Sql(scripts = {
+        "classpath:database/rentals/clear-all-rentals.sql",
+        "classpath:database/users/clear-all-users.sql",
+        "classpath:database/cars/clear-all-cars.sql"
+},
+        executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD)
 public class UserRepositoryTest {
     @Autowired
     private UserRepository userRepository;
@@ -45,5 +57,25 @@ public class UserRepositoryTest {
 
         // Then
         assertThat(actual).isNotNull().isEqualTo(expected);
+    }
+
+    @Test
+    @DisplayName("Get email by rental id.")
+    void getEmailByRentalId_ExistingRentalId_ReturnsEmail() {
+        // When
+        Optional<String> actual = userRepository.getEmailByRentalId(EXISTING_RENTAL_ID);
+
+        // Then
+        assertThat(actual).isPresent().hasValue(EXISTING_EMAIL);
+    }
+
+    @Test
+    @DisplayName("Get email by rental id.")
+    void getEmailByRentalId_NotExistingRentalId_ReturnsEmpty() {
+        // When
+        Optional<String> actual = userRepository.getEmailByRentalId(NOT_EXISTING_RENTAL_ID);
+
+        // Then
+        assertThat(actual).isEmpty();
     }
 }

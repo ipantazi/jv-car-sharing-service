@@ -2,7 +2,9 @@ package com.github.ipantazi.carsharing.service.user;
 
 import static com.github.ipantazi.carsharing.util.TestDataUtil.ACTUAL_RETURN_DATE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.B_CRYPT_PASSWORD;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_EMAIL;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_ID_ANOTHER_USER;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.FIRST_NAME;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.LAST_NAME;
@@ -10,6 +12,7 @@ import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_EMAIL;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_NOT_HASHED_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_NOT_HASHED_PASSWORD;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_HASHED_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.SAFE_DELETED_USER_ID;
@@ -612,7 +615,7 @@ public class UserServiceTest {
 
     @Test
     @DisplayName("""
-            Test canAccessRental() method when user user is a CASTOMER and has no access to
+            Test canAccessRental() method when user user is a CUSTOMER and has no access to
              rental.
             """)
     public void canAccessRental_CustomerAndNoAccess_returnsFalse() {
@@ -645,6 +648,38 @@ public class UserServiceTest {
                 .hasMessageContaining("User not found with id: " + NOT_EXISTING_USER_ID);
 
         verify(userRepository, times(1)).findById(NOT_EXISTING_USER_ID);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("Test getEmailByRentalId() method when rental id is exists.")
+    public void getEmailByRentalId_ExistingRentalId_ReturnsEmail() {
+        //Given
+        when(userRepository.getEmailByRentalId(EXISTING_RENTAL_ID))
+                .thenReturn(Optional.of(EXISTING_EMAIL));
+
+        //When
+        String actualEmail = userService.getEmailByRentalId(EXISTING_RENTAL_ID);
+
+        //Then
+        assertThat(actualEmail).isEqualTo(EXISTING_EMAIL);
+        verify(userRepository, times(1)).getEmailByRentalId(EXISTING_RENTAL_ID);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("Test getEmailByRentalId() method when rental id is not exists.")
+    public void getEmailByRentalId_NotExistingRentalId_ThrowsException() {
+        //Given
+        when(userRepository.getEmailByRentalId(NOT_EXISTING_RENTAL_ID))
+                .thenReturn(Optional.empty());
+
+        //When & Then
+        assertThatThrownBy(() -> userService.getEmailByRentalId(NOT_EXISTING_RENTAL_ID))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("User email not found with rental id: " + NOT_EXISTING_RENTAL_ID);
+
+        verify(userRepository, times(1)).getEmailByRentalId(NOT_EXISTING_RENTAL_ID);
         verifyNoMoreInteractions(userRepository);
     }
 }

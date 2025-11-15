@@ -138,7 +138,7 @@ public class RentalControllerTest {
         authenticateTestUser(EXISTING_USER_ID, User.Role.CUSTOMER);
 
         RentalResponseDto expectedRentalResponseDto = createNewTestRentalResponseDto(
-                NEW_RENTAL_ID);
+                NEW_RENTAL_ID, FIXED_DATE);
         expectedRentalResponseDto.setUserId(EXISTING_USER_ID);
         int expectedCarInventory = CAR_INVENTORY - 1;
         expectedRentalResponseDto.getCarDto().setInventory(expectedCarInventory);
