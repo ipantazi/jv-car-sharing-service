@@ -55,7 +55,7 @@ public class Car {
         HATCHBACK,
         UNIVERSAL;
 
-        public static Type valueOfStatus(String value) {
+        public static Type valueOfType(String value) {
             return Arrays.stream(values())
                     .filter(element -> element.name().equalsIgnoreCase(value))
                     .findFirst()
