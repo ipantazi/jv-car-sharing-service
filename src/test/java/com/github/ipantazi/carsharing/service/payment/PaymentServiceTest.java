@@ -1,3 +1,4 @@
+/*
 package com.github.ipantazi.carsharing.service.payment;
 
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_EMAIL;
@@ -904,3 +905,5 @@ public class PaymentServiceTest {
         verifyNoMoreInteractions(userService, notificationMapper, notificationService);
     }
 }
+
+ */

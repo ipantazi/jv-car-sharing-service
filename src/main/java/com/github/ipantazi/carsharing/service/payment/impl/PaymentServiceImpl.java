@@ -131,15 +131,17 @@ public class PaymentServiceImpl implements PaymentService {
         String sessionId = metadataDto.sessionId();
         Optional<Payment> paymentOpt = paymentRepository.findPaymentBySessionId(sessionId);
 
+
+
+        paymentValidator.checkingAmountToPay(metadataDto);
         if (paymentOpt.isPresent()) {
             payment = paymentOpt.get();
             if (payment.getStatus() == STATUS_PAID) {
                 return;
             }
-            paymentValidator.checkingAmountToPay(metadataDto, payment);
+
             payment.setStatus(STATUS_PAID);
         } else {
-            paymentValidator.checkingAmountToPay(metadataDto, null);
             payment = buildPayment(metadataDto, STATUS_PAID);
             if (payment.getSessionUrl() == null) {
                 log.warn("Webhook received for session {} without URL", sessionId);

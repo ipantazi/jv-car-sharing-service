@@ -34,22 +34,17 @@ public class PaymentValidatorImpl implements PaymentValidator {
     }
 
     @Override
-    public void checkingAmountToPay(StripeSessionMetadataDto metadataDto, Payment payment) {
+    public void checkingAmountToPay(StripeSessionMetadataDto metadataDto) {
         Long rentalId = metadataDto.rentalId();
-        Payment.Type type = metadataDto.type();
         BigDecimal amountFromSession = metadataDto.amountToPay();
-        BigDecimal expectedAmount;
 
-        if (payment == null) {
-            Rental rental = rentalRepository.findById(rentalId)
-                    .orElseThrow(() -> new EntityNotFoundException("Rental not found with id: "
-                            + rentalId));
-            expectedAmount = calculator.calculateAmountToPayByType(rental, type);
-        } else {
-            expectedAmount = payment.getAmountToPay();
-        }
+        Rental rental = rentalRepository.findById(rentalId)
+                .orElseThrow(() -> new EntityNotFoundException("Rental not found with id: "
+                        + rentalId));
+        BigDecimal expectedAmount = calculator.calculateAmountToPayByType(rental,
+                metadataDto.type());
 
-        if (!expectedAmount.equals(amountFromSession)) {
+        if (!(expectedAmount.compareTo(amountFromSession) == 0)) {
             throw new InvalidPaymentAmountException(expectedAmount, amountFromSession);
         }
     }
