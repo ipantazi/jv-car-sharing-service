@@ -131,8 +131,6 @@ public class PaymentServiceImpl implements PaymentService {
         String sessionId = metadataDto.sessionId();
         Optional<Payment> paymentOpt = paymentRepository.findPaymentBySessionId(sessionId);
 
-
-
         paymentValidator.checkingAmountToPay(metadataDto);
         if (paymentOpt.isPresent()) {
             payment = paymentOpt.get();
