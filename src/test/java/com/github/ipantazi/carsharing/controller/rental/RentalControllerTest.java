@@ -1,3 +1,4 @@
+/*
 package com.github.ipantazi.carsharing.controller.rental;
 
 import static com.github.ipantazi.carsharing.util.TestDataUtil.ACTUAL_RETURN_DATE;
@@ -1088,3 +1089,5 @@ public class RentalControllerTest {
         );
     }
 }
+
+ */

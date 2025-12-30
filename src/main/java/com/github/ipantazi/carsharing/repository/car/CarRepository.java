@@ -24,7 +24,7 @@ public interface CarRepository extends JpaRepository<Car, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT c FROM Car c WHERE c.id = :id")
-    Optional<Car> findByIdForUpdate(Long id);
+    Optional<Car> lockCarForUpdate(Long id);
 
     @Query("SELECT c.dailyFee FROM Car c WHERE c.id = :carId")
     Optional<BigDecimal> findDailyFeeByCarId(@Param("carId") Long carId);

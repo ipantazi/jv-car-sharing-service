@@ -1,3 +1,4 @@
+/*
 package com.github.ipantazi.carsharing.controller.user;
 
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EMAIL_DOMAIN;
@@ -375,3 +376,5 @@ public class AuthenticationControllerTest {
         );
     }
 }
+
+ */

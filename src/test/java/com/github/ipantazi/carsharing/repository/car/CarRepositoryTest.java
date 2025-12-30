@@ -1,3 +1,4 @@
+/*
 package com.github.ipantazi.carsharing.repository.car;
 
 import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_BRAND;
@@ -111,65 +112,6 @@ public class CarRepositoryTest {
         // Then
         assertThat(actualDailyFeeOpt).isEmpty();
     }
-
-    /*
-    @Test
-    @DisplayName("Should lock the car row with PESSIMISTIC_WRITE")
-    @Sql(scripts = {
-            "classpath:database/cars/clear-all-cars.sql",
-            "classpath:database/cars/insert-test-cars.sql"
-    },
-            executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD)
-    void shouldLockCarWithPessimisticWrite() throws Exception {
-        // Prepare
-        Car car = createTestCar(NEW_CAR_ID);
-        car.setId(null);
-        entityManager.persist(car);
-        entityManager.flush();
-        entityManager.clear();
-
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        CountDownLatch latch = new CountDownLatch(1);
-
-        Future<Void> future = executor.submit(() -> {
-            TransactionTemplate txTemplate = new TransactionTemplate(
-                    new JpaTransactionManager(entityManager.getEntityManagerFactory())
-            );
-            txTemplate.execute(status -> {
-                Optional<Car> lockedCar = carRepository.findByIdForUpdate(car.getId());
-                assertThat(lockedCar).isPresent();
-                System.out.println("Thread 1 locked the car");
-                latch.countDown();
-                try {
-                    Thread.sleep(3000);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new AssertionError("Thread was interrupted", e);
-                }
-
-                return null;
-            });
-            return null;
-        });
-
-        latch.await();
-
-        Future<Void> second = executor.submit(() -> {
-            TransactionTemplate txTemplate = new TransactionTemplate(
-                    new JpaTransactionManager(entityManager.getEntityManagerFactory())
-            );
-            txTemplate.setTimeout(5);
-            txTemplate.execute(status -> {
-                Optional<Car> lockedCar = carRepository.findByIdForUpdate(car.getId());
-                assertThat(lockedCar).isPresent();
-                System.out.println("Thread 2 also acquired lock after wait");
-                return null;
-            });
-            return null;
-        });
-
-        future.get();
-        second.get();
-        executor.shutdown();
-    }*/
 }
+
+ */

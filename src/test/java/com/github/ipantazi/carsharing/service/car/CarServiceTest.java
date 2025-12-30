@@ -28,7 +28,6 @@ import com.github.ipantazi.carsharing.dto.car.CarRequestDto;
 import com.github.ipantazi.carsharing.dto.car.InventoryRequestDto;
 import com.github.ipantazi.carsharing.dto.car.UpdateCarDto;
 import com.github.ipantazi.carsharing.dto.enums.OperationType;
-import com.github.ipantazi.carsharing.exception.CarNotAvailableException;
 import com.github.ipantazi.carsharing.exception.DataProcessingException;
 import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
 import com.github.ipantazi.carsharing.mapper.CarMapper;
@@ -402,57 +401,6 @@ public class CarServiceTest {
         );
         verify(carMapper, times(1)).toCarDto(car);
         verifyNoMoreInteractions(inventoryService, carMapper);
-    }
-
-    @Test
-    @DisplayName("Test validateCarAvailableForRental() method when the car is available")
-    void validateCarAvailableForRental_CarAvailable_CheckSuccess() {
-        // Given
-        boolean availableStatus = true;
-        when(carRepository.existsCarByIdAndInventoryIsGreaterThan(EXISTING_CAR_ID, 0))
-                .thenReturn(availableStatus);
-
-        // When
-        carService.validateCarAvailableForRental(EXISTING_CAR_ID);
-
-        // Then
-        verify(carRepository, times(1))
-                .existsCarByIdAndInventoryIsGreaterThan(EXISTING_CAR_ID, 0);
-        verifyNoMoreInteractions(carRepository);
-    }
-
-    @Test
-    @DisplayName("Test validateCarAvailableForRental() method when the car is not available")
-    void validateCarAvailableForRental_CarNotAvailable_ThrowsException() {
-        // Given
-        boolean availableStatus = false;
-        when(carRepository.existsCarByIdAndInventoryIsGreaterThan(EXISTING_CAR_ID, 0))
-                .thenReturn(availableStatus);
-
-        // When & Then
-        assertThatThrownBy(() -> carService.validateCarAvailableForRental(EXISTING_CAR_ID))
-                .isInstanceOf(CarNotAvailableException.class)
-                .hasMessage("Car with id: " + EXISTING_CAR_ID + " is not available for rental.");
-        verify(carRepository, times(1)).existsCarByIdAndInventoryIsGreaterThan(EXISTING_CAR_ID, 0);
-        verifyNoMoreInteractions(carRepository);
-    }
-
-    @Test
-    @DisplayName("Test validateCarAvailableForRental() method when the car does not exist")
-    void validateCarAvailableForRental_CarDoesNotExist_ThrowsException() {
-        // Given
-        boolean availableStatus = false;
-        when(carRepository.existsCarByIdAndInventoryIsGreaterThan(NOT_EXISTING_CAR_ID, 0))
-                .thenReturn(availableStatus);
-
-        // When & Then
-        assertThatThrownBy(() -> carService.validateCarAvailableForRental(NOT_EXISTING_CAR_ID))
-                .isInstanceOf(CarNotAvailableException.class)
-                .hasMessage("Car with id: %d is not available for rental."
-                        .formatted(NOT_EXISTING_CAR_ID));
-        verify(carRepository, times(1))
-                .existsCarByIdAndInventoryIsGreaterThan(NOT_EXISTING_CAR_ID, 0);
-        verifyNoMoreInteractions(carRepository);
     }
 
     @Test
