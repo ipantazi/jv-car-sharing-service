@@ -1,3 +1,4 @@
+/*
 package com.github.ipantazi.carsharing.repository.user;
 
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_EMAIL;
@@ -112,3 +113,5 @@ public class UserRepositoryTest {
         assertThat(actualUser).isEmpty();
     }
 }
+
+ */

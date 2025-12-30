@@ -14,12 +14,10 @@ import org.springframework.stereotype.Repository;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<UserDetails> findByEmail(String email);
 
-    boolean existsByEmail(String email);
-
     @Query(value = """
     SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
     FROM users
-    WHERE id = ? AND is_deleted = TRUE                                        
+    WHERE id = ? AND is_deleted = TRUE
             """, nativeQuery = true)
     Long existsSoftDeletedUserById(@Param("id") Long id);
 

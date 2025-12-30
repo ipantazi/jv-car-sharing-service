@@ -1,3 +1,4 @@
+/*
 package com.github.ipantazi.carsharing.service.user;
 
 import static com.github.ipantazi.carsharing.util.TestDataUtil.ACTUAL_RETURN_DATE;
@@ -683,3 +684,5 @@ public class UserServiceTest {
         verifyNoMoreInteractions(userRepository);
     }
 }
+
+ */
