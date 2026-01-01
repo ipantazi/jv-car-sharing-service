@@ -25,7 +25,5 @@ public interface CarService {
 
     Car findCarById(Long id);
 
-    void validateCarAvailableForRental(Long carId);
-
     List<CarDto> getByIds(Set<Long> ids);
 }
