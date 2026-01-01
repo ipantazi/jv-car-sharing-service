@@ -300,7 +300,7 @@ public class RentalControllerTest {
                 result,
                 objectMapper,
                 BAD_REQUEST,
-                "Car with id: %d is not available for rental.".formatted(rentalRequestDto.carId())
+                "Not enough cars with ID: %d".formatted(rentalRequestDto.carId())
         );
     }
 
@@ -320,7 +320,7 @@ public class RentalControllerTest {
         MvcResult result = createJsonMvcResult(
                 mockMvc,
                 post(URL_RENTALS),
-                status().isBadRequest(),
+                status().isNotFound(),
                 jsonRequest
         );
 
@@ -328,8 +328,8 @@ public class RentalControllerTest {
         assertValidationError(
                 result,
                 objectMapper,
-                BAD_REQUEST,
-                "Car with id: %d is not available for rental."
+                NOT_FOUND,
+                "Car not found with id: %d"
                         .formatted(rentalRequestDto.carId())
         );
     }

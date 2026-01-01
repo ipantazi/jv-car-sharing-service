@@ -15,8 +15,10 @@ import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.repository.user.UserRepository;
 import com.github.ipantazi.carsharing.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -26,21 +28,23 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
+    @Transactional
     public UserResponseDto register(UserRegistrationRequestDto requestDto)
             throws RegistrationException {
-        if (userRepository.existsByEmail(requestDto.email())) {
-            throw new RegistrationException("Can't register user with this email: "
-                    + requestDto.email());
+        try {
+            User user = userMapper.toUserEntity(requestDto);
+            user.setPassword(passwordEncoder.encode(requestDto.password()));
+            return userMapper.toUserDto(userRepository.save(user));
+        } catch (DataIntegrityViolationException ex) {
+            throw new RegistrationException(
+                    "Can't register user with this email: %s".formatted(requestDto.email()), ex);
         }
-
-        User user = userMapper.toUserEntity(requestDto);
-        user.setPassword(passwordEncoder.encode(requestDto.password()));
-        return userMapper.toUserDto(userRepository.save(user));
     }
 
     @Override
+    @Transactional
     public UserResponseDto updateUserRole(Long id, UserRoleUpdateDto newRole) {
-        User user = getUserById(id);
+        User user = lockUserForUpdate(id);
         user.setRole(User.Role.valueOf(newRole.role()));
         return userMapper.toUserDto(userRepository.save(user));
     }
@@ -52,21 +56,29 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public UserResponseDto updateUserProfile(Long userId,
                                              UserProfileUpdateDto userProfileUpdateDto) {
-        User user = getUserById(userId);
-        if (!user.getEmail().equals(userProfileUpdateDto.email())
-                && userRepository.existsByEmail(userProfileUpdateDto.email())) {
-            throw new EmailAlreadyInUseException("Email already in use: "
-                    + userProfileUpdateDto.email());
+        User user = lockUserForUpdate(userId);
+
+        boolean emailChanging = !user.getEmail().equals(userProfileUpdateDto.email());
+        if (emailChanging) {
+            boolean emailUsedByOtherUser =
+                    userRepository.existsByEmailAndIdNot(userProfileUpdateDto.email(), userId);
+
+            if (emailUsedByOtherUser) {
+                throw new EmailAlreadyInUseException("Email already in use: "
+                        + userProfileUpdateDto.email());
+            }
         }
         userMapper.updateUserEntity(userProfileUpdateDto, user);
         return userMapper.toUserDto(userRepository.save(user));
     }
 
     @Override
+    @Transactional
     public void changePassword(Long id, UserChangePasswordDto requestDto) {
-        User user = getUserById(id);
+        User user = lockUserForUpdate(id);
         if (!passwordEncoder.matches(requestDto.oldPassword(), user.getPassword())) {
             throw new InvalidOldPasswordException("Old password is incorrect");
 
@@ -120,6 +132,13 @@ public class UserServiceImpl implements UserService {
 
     private User getUserById(Long userId) {
         return userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new EntityNotFoundException("User not found with id: " + userId)
+                );
+    }
+
+    private User lockUserForUpdate(Long userId) {
+        return userRepository.lockUserForUpdate(userId)
                 .orElseThrow(() ->
                         new EntityNotFoundException("User not found with id: " + userId)
                 );

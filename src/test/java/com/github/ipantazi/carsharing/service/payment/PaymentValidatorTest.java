@@ -1,11 +1,9 @@
 package com.github.ipantazi.carsharing.service.payment;
 
 import static com.github.ipantazi.carsharing.util.TestDataUtil.AMOUNT_TO_PAY;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_PAYMENT_WITH_ID_101;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.INVALID_AMOUNT_TO_PAY;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestPayment;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRental;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestStripeSessionMetadataDto;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -87,10 +85,8 @@ public class PaymentValidatorTest {
     }
 
     @Test
-    @DisplayName(
-            "Test checkingAmountToPay() method when amount to pay is correct and payment is null"
-    )
-    public void checkingAmountToPay_AmountToPayIsCorrectAndPaymentIsNull_Success() {
+    @DisplayName("Test checkingAmountToPay() method when amount to pay is correct.")
+    public void checkingAmountToPay_AmountToPayIsCorrect_Success() {
         // Given
         Rental rental = createTestRental(EXISTING_USER_ID, null);
         StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(
@@ -104,7 +100,7 @@ public class PaymentValidatorTest {
                 .thenReturn(metadataDto.amountToPay());
 
         // When
-        paymentValidator.checkingAmountToPay(metadataDto, null);
+        paymentValidator.checkingAmountToPay(metadataDto);
 
         // Then
         verify(rentalRepository, times(1)).findById(EXISTING_RENTAL_ID);
@@ -113,8 +109,8 @@ public class PaymentValidatorTest {
     }
 
     @Test
-    @DisplayName("Test checkingAmountToPay() method when payment is null and rental not found")
-    public void checkingAmountToPay_PaymentIsNullAndRentalNotFound_ThrowsException() {
+    @DisplayName("Test checkingAmountToPay() method when rental not found")
+    public void checkingAmountToPay_RentalNotFound_ThrowsException() {
         // Given
         StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(
                 EXISTING_RENTAL_ID,
@@ -125,7 +121,7 @@ public class PaymentValidatorTest {
                 .thenReturn(Optional.empty());
 
         // When & Then
-        assertThatThrownBy(() -> paymentValidator.checkingAmountToPay(metadataDto, null))
+        assertThatThrownBy(() -> paymentValidator.checkingAmountToPay(metadataDto))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessage("Rental not found with id: " + metadataDto.rentalId());
 
@@ -135,10 +131,8 @@ public class PaymentValidatorTest {
     }
 
     @Test
-    @DisplayName(
-            "Test checkingAmountToPay() method when payment is null and amount to pay is incorrect"
-    )
-    public void checkingAmountToPay_PaymentIsNullAndAmountToPayIsIncorrect_ThrowsException() {
+    @DisplayName("Test checkingAmountToPay() method when amount to pay is incorrect.")
+    public void checkingAmountToPay_AmountToPayIsIncorrect_ThrowsException() {
         // Given
         StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(
                 EXISTING_RENTAL_ID,
@@ -152,7 +146,7 @@ public class PaymentValidatorTest {
                 .thenReturn(AMOUNT_TO_PAY);
 
         // When & Then
-        assertThatThrownBy(() -> paymentValidator.checkingAmountToPay(metadataDto, null))
+        assertThatThrownBy(() -> paymentValidator.checkingAmountToPay(metadataDto))
                 .isInstanceOf(InvalidPaymentAmountException.class)
                 .hasMessage("Invalid amount paid for the rental. Expected: %s, Paid: %s"
                                 .formatted(AMOUNT_TO_PAY, metadataDto.amountToPay()));
@@ -160,43 +154,5 @@ public class PaymentValidatorTest {
         verify(rentalRepository, times(1)).findById(EXISTING_RENTAL_ID);
         verify(calculator, times(1)).calculateAmountToPayByType(rental, metadataDto.type());
         verifyNoMoreInteractions(rentalRepository, calculator);
-    }
-
-    @Test
-    @DisplayName("Test checkingAmountToPay() method when amount to pay is correct and payment is "
-            + "existing")
-    public void checkingAmountToPay_AmountToPayIsCorrectAndPaymentIsExisting_Success() {
-        // Given
-        Payment payment = createTestPayment(EXISTING_PAYMENT_WITH_ID_101, Payment.Status.PENDING);
-        StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(
-                EXISTING_RENTAL_ID,
-                payment.getAmountToPay()
-        );
-
-        // When
-        paymentValidator.checkingAmountToPay(metadataDto, payment);
-
-        // Then
-        verifyNoInteractions(paymentRepository, calculator);
-    }
-
-    @Test
-    @DisplayName("Test checkingAmountToPay() method when payment is existing and amount to pay "
-            + "is incorrect")
-    public void checkingAmountToPay_PaymentIsExistingAndAmountToPayIsIncorrect_ThrowsException() {
-        // Given
-        Payment payment = createTestPayment(EXISTING_PAYMENT_WITH_ID_101, Payment.Status.PENDING);
-        StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(
-                EXISTING_RENTAL_ID,
-                INVALID_AMOUNT_TO_PAY
-        );
-
-        // When & Then
-        assertThatThrownBy(() -> paymentValidator.checkingAmountToPay(metadataDto, payment))
-                .isInstanceOf(InvalidPaymentAmountException.class)
-                .hasMessage("Invalid amount paid for the rental. Expected: %s, Paid: %s"
-                                .formatted(payment.getAmountToPay(), metadataDto.amountToPay()));
-
-        verifyNoInteractions(paymentRepository, calculator);
     }
 }

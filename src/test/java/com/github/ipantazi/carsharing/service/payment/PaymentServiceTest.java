@@ -5,6 +5,7 @@ import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_ID_ANOTH
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_PAYMENT_WITH_ID_101;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.INVALID_SESSION_ID;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.LOCAL_HOST;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_PAYMENT_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.PAYMENT_IGNORING_FIELDS;
@@ -60,6 +61,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -210,8 +212,7 @@ public class PaymentServiceTest {
     public void createPaymentSession_PaymentDoesNotExist_ReturnsPaymentResponseDto()
             throws StripeException {
         // Given
-        final UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(
-                "http://localhost");
+        final UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(LOCAL_HOST);
         PaymentResponseDto expectedPaymentResponseDto = createNewTestPaymentResponseDto(
                 NEW_PAYMENT_ID,
                 Payment.Status.PENDING
@@ -225,11 +226,11 @@ public class PaymentServiceTest {
         StripeSessionMetadataDto stripeSessionMetadataDto = createTestStripeSessionMetadataDto(
                 expectedPaymentResponseDto);
 
-        when(rentalService.getRentalByIdAndUserId(
+        when(rentalService.getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 expectedPaymentResponseDto.getRentalId()
         )).thenReturn(rental);
-        when(paymentRepository.findPaymentByRentalIdAndType(
+        when(paymentRepository.lockPaymentForUpdate(
                 expectedPaymentResponseDto.getRentalId(),
                 expectedPaymentResponseDto.getType()
         )).thenReturn(Optional.empty());
@@ -259,12 +260,12 @@ public class PaymentServiceTest {
                 PAYMENT_IGNORING_FIELDS
         );
 
-        verify(rentalService, times(1)).getRentalByIdAndUserId(
+        verify(rentalService, times(1)).getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 expectedPaymentResponseDto.getRentalId()
         );
         verify(paymentRepository, times(1))
-                .findPaymentByRentalIdAndType(expectedPaymentResponseDto.getRentalId(),
+                .lockPaymentForUpdate(expectedPaymentResponseDto.getRentalId(),
                         expectedPaymentResponseDto.getType());
         verify(calculator, times(1))
                 .calculateAmountToPayByType(rental, expectedPaymentResponseDto.getType());
@@ -285,7 +286,7 @@ public class PaymentServiceTest {
     public void createPaymentSession_PaymentIsExpired_ReturnsPaymentResponseDto()
             throws StripeException {
         // Given
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("http://localhost");
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(LOCAL_HOST);
         PaymentResponseDto expectedPaymentResponseDto = createTestPaymentResponseDto(
                 EXISTING_PAYMENT_WITH_ID_101,
                 Payment.Status.PENDING
@@ -299,11 +300,11 @@ public class PaymentServiceTest {
         StripeSessionMetadataDto stripeSessionMetadataDto = createTestStripeSessionMetadataDto(
                 expectedPaymentResponseDto);
 
-        when(rentalService.getRentalByIdAndUserId(
+        when(rentalService.getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 expectedPaymentResponseDto.getRentalId()
         )).thenReturn(rental);
-        when(paymentRepository.findPaymentByRentalIdAndType(
+        when(paymentRepository.lockPaymentForUpdate(
                 expectedPaymentResponseDto.getRentalId(),
                 expectedPaymentResponseDto.getType()
         )).thenReturn(Optional.of(payment));
@@ -334,12 +335,12 @@ public class PaymentServiceTest {
         );
         assertThat(actualPaymentResponseDto.getStatus()).isEqualTo(Payment.Status.PENDING);
 
-        verify(rentalService, times(1)).getRentalByIdAndUserId(
+        verify(rentalService, times(1)).getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 expectedPaymentResponseDto.getRentalId()
         );
         verify(paymentRepository, times(1))
-                .findPaymentByRentalIdAndType(expectedPaymentResponseDto.getRentalId(),
+                .lockPaymentForUpdate(expectedPaymentResponseDto.getRentalId(),
                         expectedPaymentResponseDto.getType());
         verify(calculator, times(1))
                 .calculateAmountToPayByType(rental, expectedPaymentResponseDto.getType());
@@ -359,7 +360,7 @@ public class PaymentServiceTest {
     @DisplayName("Test createPaymentSession() method when payment is already paid")
     public void createPaymentSession_PaymentIsPaid_ThrowsException() {
         // Given
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("http://localhost");
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(LOCAL_HOST);
         Payment payment = createTestPayment(
                 EXISTING_PAYMENT_WITH_ID_101,
                 Payment.Status.PAID
@@ -370,14 +371,12 @@ public class PaymentServiceTest {
         );
         Rental rental = createTestRental(EXISTING_USER_ID, null);
 
-        when(rentalService.getRentalByIdAndUserId(
+        when(rentalService.getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 payment.getRentalId()
         )).thenReturn(rental);
-        when(paymentRepository.findPaymentByRentalIdAndType(
-                payment.getRentalId(),
-                payment.getType()
-        )).thenReturn(Optional.of(payment));
+        when(paymentRepository.lockPaymentForUpdate(payment.getRentalId(), payment.getType()))
+                .thenReturn(Optional.of(payment));
 
         // When & Then
         assertThatThrownBy(() -> paymentService.createPaymentSession(
@@ -389,12 +388,12 @@ public class PaymentServiceTest {
                 .hasMessage("Payment for rental: %d and type: %s already paid"
                         .formatted(payment.getRentalId(), payment.getType()));
 
-        verify(rentalService, times(1)).getRentalByIdAndUserId(
+        verify(rentalService, times(1)).getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 payment.getRentalId()
         );
         verify(paymentRepository, times(1))
-                .findPaymentByRentalIdAndType(payment.getRentalId(), payment.getType());
+                .lockPaymentForUpdate(payment.getRentalId(), payment.getType());
         verify(paymentRepository, never()).save(any(Payment.class));
         verifyNoMoreInteractions(rentalService, paymentRepository);
         verifyNoInteractions(calculator, stripeClient);
@@ -404,7 +403,7 @@ public class PaymentServiceTest {
     @DisplayName("Test createPaymentSession() method when payment is already pending")
     public void createPaymentSession_PaymentIsPending_ThrowsException() {
         // Given
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("http://localhost");
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(LOCAL_HOST);
         Payment payment = createTestPayment(
                 EXISTING_PAYMENT_WITH_ID_101,
                 Payment.Status.PENDING
@@ -415,11 +414,11 @@ public class PaymentServiceTest {
         );
         Rental rental = createTestRental(EXISTING_USER_ID, null);
 
-        when(rentalService.getRentalByIdAndUserId(
+        when(rentalService.getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 payment.getRentalId()
         )).thenReturn(rental);
-        when(paymentRepository.findPaymentByRentalIdAndType(
+        when(paymentRepository.lockPaymentForUpdate(
                 payment.getRentalId(),
                 payment.getType()
         )).thenReturn(Optional.of(payment));
@@ -436,12 +435,12 @@ public class PaymentServiceTest {
                         + "Please complete your session by url: %s"
                         .formatted(payment.getSessionUrl()));
 
-        verify(rentalService, times(1)).getRentalByIdAndUserId(
+        verify(rentalService, times(1)).getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 payment.getRentalId()
         );
         verify(paymentRepository, times(1))
-                .findPaymentByRentalIdAndType(payment.getRentalId(), payment.getType());
+                .lockPaymentForUpdate(payment.getRentalId(), payment.getType());
         verify(paymentRepository, never()).save(any(Payment.class));
         verifyNoMoreInteractions(rentalService, paymentRepository);
         verifyNoInteractions(calculator, stripeClient);
@@ -451,13 +450,13 @@ public class PaymentServiceTest {
     @DisplayName("Test createPaymentSession() method when rental id is not found")
     public void createPaymentSession_RentalIdIsNotFound_ThrowsException() {
         // Given
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("http://localhost");
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(LOCAL_HOST);
         PaymentRequestDto paymentRequestDto = new PaymentRequestDto(
                 NOT_EXISTING_RENTAL_ID,
                 String.valueOf(Payment.Type.PAYMENT)
         );
 
-        when(rentalService.getRentalByIdAndUserId(
+        when(rentalService.getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 NOT_EXISTING_RENTAL_ID
         )).thenThrow(new EntityNotFoundException("Rental not found with id: %d and user id: %d."
@@ -473,13 +472,87 @@ public class PaymentServiceTest {
                 .hasMessage("Rental not found with id: %d and user id: %d."
                         .formatted(NOT_EXISTING_RENTAL_ID, EXISTING_USER_ID));
 
-        verify(rentalService, times(1)).getRentalByIdAndUserId(
+        verify(rentalService, times(1)).getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 NOT_EXISTING_RENTAL_ID
         );
         verify(paymentRepository, never()).save(any(Payment.class));
         verifyNoMoreInteractions(rentalService);
         verifyNoInteractions(calculator, stripeClient, paymentRepository);
+    }
+
+    @Test
+    @DisplayName("""
+            Test createPaymentSession() method when concurrency issue occurs
+             and no payment exists yet. Should return updated payment from the database.
+            """)
+    public void createPaymentSession_ConcurrencyIssue_ReturnsUpdatedPayment()
+            throws StripeException {
+        // Given
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(LOCAL_HOST);
+        PaymentResponseDto expectedPaymentDto = createTestPaymentResponseDto(
+                EXISTING_PAYMENT_WITH_ID_101,
+                Payment.Status.PENDING
+        );
+        Payment payment = createTestPayment(expectedPaymentDto);
+        PaymentRequestDto paymentRequestDto = new PaymentRequestDto(
+                payment.getRentalId(),
+                String.valueOf(payment.getType())
+        );
+        Rental rental = createTestRental(EXISTING_USER_ID, null);
+        StripeSessionMetadataDto stripeSessionMetadataDto = createTestStripeSessionMetadataDto(
+                expectedPaymentDto);
+
+        when(rentalService.getRentalEntityByIdAndUserId(
+                EXISTING_USER_ID,
+                payment.getRentalId()
+        )).thenReturn(rental);
+        when(paymentRepository.lockPaymentForUpdate(
+                payment.getRentalId(),
+                payment.getType()
+        ))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(payment)
+                );
+        when(calculator.calculateAmountToPayByType(rental, expectedPaymentDto.getType()))
+                .thenReturn(expectedPaymentDto.getAmountToPay());
+        when(stripeClient.createSession(
+                any(BigDecimal.class),
+                anyString(),
+                anyString(),
+                eq(paymentRequestDto)
+        )).thenReturn(stripeSessionMetadataDto);
+        when(paymentRepository.save(any(Payment.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate"));
+        when(paymentMapper.toPaymentResponseDto(payment)).thenReturn(expectedPaymentDto);
+
+        // When
+        PaymentResponseDto actualPaymentDto = paymentService.createPaymentSession(
+                EXISTING_USER_ID,
+                paymentRequestDto,
+                uriBuilder
+        );
+
+        // Then
+        assertThat(actualPaymentDto).isEqualTo(expectedPaymentDto);
+        verify(rentalService, times(1)).getRentalEntityByIdAndUserId(
+                EXISTING_USER_ID,
+                payment.getRentalId()
+        );
+        verify(paymentRepository, times(2))
+                .lockPaymentForUpdate(payment.getRentalId(), payment.getType());
+        verify(calculator, times(1)).calculateAmountToPayByType(rental, payment.getType());
+        verify(stripeClient, times(1))
+                .createSession(
+                        any(BigDecimal.class),
+                        anyString(),
+                        anyString(),
+                        eq(paymentRequestDto)
+                );
+        verify(paymentRepository, times(1)).save(any(Payment.class));
+        verify(paymentMapper, times(1)).toPaymentResponseDto(payment);
+        verifyNoMoreInteractions(rentalService, paymentRepository, paymentMapper);
+        verifyNoMoreInteractions(calculator, stripeClient);
     }
 
     @Test
@@ -545,7 +618,7 @@ public class PaymentServiceTest {
     public void renewPaymentSession_PaymentIsExpired_ReturnsPaymentResponseDto()
             throws StripeException {
         // Given
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("http://localhost");
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(LOCAL_HOST);
         PaymentResponseDto expectedPaymentResponseDto = createNewTestPaymentResponseDto(
                 EXISTING_PAYMENT_WITH_ID_101,
                 Payment.Status.PAID
@@ -561,11 +634,11 @@ public class PaymentServiceTest {
         StripeSessionMetadataDto stripeSessionMetadataDto = createTestStripeSessionMetadataDto(
                 expectedPaymentResponseDto);
 
-        when(rentalService.getRentalByIdAndUserId(
+        when(rentalService.getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 expectedPaymentResponseDto.getRentalId()
         )).thenReturn(rental);
-        when(paymentRepository.findPaymentByRentalIdAndType(
+        when(paymentRepository.lockPaymentForUpdate(
                 expectedPaymentResponseDto.getRentalId(),
                 expectedPaymentResponseDto.getType()
         )).thenReturn(Optional.of(payment));
@@ -595,11 +668,11 @@ public class PaymentServiceTest {
         );
         assertThat(actualPaymentResponseDto.getStatus()).isEqualTo(Payment.Status.PAID);
 
-        verify(rentalService, times(1)).getRentalByIdAndUserId(
+        verify(rentalService, times(1)).getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 expectedPaymentResponseDto.getRentalId()
         );
-        verify(paymentRepository, times(1)).findPaymentByRentalIdAndType(
+        verify(paymentRepository, times(1)).lockPaymentForUpdate(
                 expectedPaymentResponseDto.getRentalId(),
                 expectedPaymentResponseDto.getType()
         );
@@ -614,7 +687,7 @@ public class PaymentServiceTest {
     @DisplayName("Test renewPaymentSession() method when payment is already PAID")
     public void renewPaymentSession_PaymentIsPaid_ThrowsException() {
         // Given
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("http://localhost");
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(LOCAL_HOST);
         Payment payment = createTestPayment(
                 EXISTING_PAYMENT_WITH_ID_101,
                 Payment.Status.PAID);
@@ -624,11 +697,11 @@ public class PaymentServiceTest {
         );
         Rental rental = createTestRental(EXISTING_USER_ID, null);
 
-        when(rentalService.getRentalByIdAndUserId(
+        when(rentalService.getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 payment.getRentalId()
         )).thenReturn(rental);
-        when(paymentRepository.findPaymentByRentalIdAndType(
+        when(paymentRepository.lockPaymentForUpdate(
                 payment.getRentalId(),
                 payment.getType()
         )).thenReturn(Optional.of(payment));
@@ -642,11 +715,11 @@ public class PaymentServiceTest {
                 .hasMessage("Payment for rental: %d and type: %s already paid"
                         .formatted(payment.getRentalId(), payment.getType()));
 
-        verify(rentalService, times(1)).getRentalByIdAndUserId(
+        verify(rentalService, times(1)).getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 payment.getRentalId()
         );
-        verify(paymentRepository, times(1)).findPaymentByRentalIdAndType(
+        verify(paymentRepository, times(1)).lockPaymentForUpdate(
                 payment.getRentalId(),
                 payment.getType()
         );
@@ -659,7 +732,7 @@ public class PaymentServiceTest {
     @DisplayName("Test renewPaymentSession() method when payment has status PENDING")
     public void renewPaymentSession_PaymentIsPending_ThrowsException() {
         // Given
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("http://localhost");
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(LOCAL_HOST);
         Payment payment = createTestPayment(
                 EXISTING_PAYMENT_WITH_ID_101,
                 Payment.Status.PENDING);
@@ -669,11 +742,11 @@ public class PaymentServiceTest {
         );
         Rental rental = createTestRental(EXISTING_USER_ID, null);
 
-        when(rentalService.getRentalByIdAndUserId(
+        when(rentalService.getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 payment.getRentalId()
         )).thenReturn(rental);
-        when(paymentRepository.findPaymentByRentalIdAndType(
+        when(paymentRepository.lockPaymentForUpdate(
                 payment.getRentalId(),
                 payment.getType()
         )).thenReturn(Optional.of(payment));
@@ -689,11 +762,11 @@ public class PaymentServiceTest {
                         + "Please complete your session by url: %s"
                         .formatted(payment.getSessionUrl()));
 
-        verify(rentalService, times(1)).getRentalByIdAndUserId(
+        verify(rentalService, times(1)).getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 payment.getRentalId()
         );
-        verify(paymentRepository, times(1)).findPaymentByRentalIdAndType(
+        verify(paymentRepository, times(1)).lockPaymentForUpdate(
                 payment.getRentalId(),
                 payment.getType()
         );
@@ -706,18 +779,18 @@ public class PaymentServiceTest {
     @DisplayName("Test renewPaymentSession() method when payment does not exist")
     public void renewPaymentSession_PaymentDoesNotExist_ThrowsException() {
         // Given
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("http://localhost");
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(LOCAL_HOST);
         PaymentRequestDto paymentRequestDto = new PaymentRequestDto(
                 EXISTING_PAYMENT_WITH_ID_101,
                 String.valueOf(Payment.Type.PAYMENT)
         );
         Rental rental = createTestRental(EXISTING_USER_ID, null);
 
-        when(rentalService.getRentalByIdAndUserId(
+        when(rentalService.getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 paymentRequestDto.rentalId()
         )).thenReturn(rental);
-        when(paymentRepository.findPaymentByRentalIdAndType(
+        when(paymentRepository.lockPaymentForUpdate(
                 paymentRequestDto.rentalId(),
                 Payment.Type.valueOf(paymentRequestDto.type())
         )).thenReturn(Optional.empty());
@@ -732,11 +805,11 @@ public class PaymentServiceTest {
                         .formatted(paymentRequestDto.rentalId(), paymentRequestDto.type())
                         + " Please create a new payment session.");
 
-        verify(rentalService, times(1)).getRentalByIdAndUserId(
+        verify(rentalService, times(1)).getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 paymentRequestDto.rentalId()
         );
-        verify(paymentRepository, times(1)).findPaymentByRentalIdAndType(
+        verify(paymentRepository, times(1)).lockPaymentForUpdate(
                 paymentRequestDto.rentalId(),
                 Payment.Type.valueOf(paymentRequestDto.type())
         );
@@ -749,12 +822,15 @@ public class PaymentServiceTest {
     @DisplayName("Test renewPaymentSession() method when rental id is not found")
     public void renewPaymentSession_RentalIdIsNotFound_ThrowsException() {
         // Given
-        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("http://localhost");
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(LOCAL_HOST);
         PaymentRequestDto paymentRequestDto = new PaymentRequestDto(
                 NOT_EXISTING_RENTAL_ID,
                 String.valueOf(Payment.Type.PAYMENT)
         );
-        when(rentalService.getRentalByIdAndUserId(EXISTING_USER_ID, paymentRequestDto.rentalId()))
+        when(rentalService.getRentalEntityByIdAndUserId(
+                EXISTING_USER_ID,
+                paymentRequestDto.rentalId()
+        ))
                 .thenThrow(new EntityNotFoundException(
                         "Rental not found with id: %d and user id: %d."
                         .formatted(paymentRequestDto.rentalId(), EXISTING_USER_ID))
@@ -769,7 +845,7 @@ public class PaymentServiceTest {
                 .hasMessage("Rental not found with id: %d and user id: %d."
                         .formatted(paymentRequestDto.rentalId(), EXISTING_USER_ID));
 
-        verify(rentalService, times(1)).getRentalByIdAndUserId(
+        verify(rentalService, times(1)).getRentalEntityByIdAndUserId(
                 EXISTING_USER_ID,
                 paymentRequestDto.rentalId()
         );
@@ -785,8 +861,10 @@ public class PaymentServiceTest {
         Payment payment = createTestPayment(EXISTING_PAYMENT_WITH_ID_101, Payment.Status.PENDING);
         PaymentPayload paymentPayload = createTestPaymentPayload(payment);
         final StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(payment);
+        Long rentalId = payment.getRentalId();
+        Payment.Type type = payment.getType();
 
-        when(paymentRepository.findPaymentBySessionId(payment.getSessionId()))
+        when(paymentRepository.lockPaymentForUpdate(rentalId, type))
                 .thenReturn(Optional.of(payment));
         when(paymentRepository.save(payment)).thenReturn(payment);
         when(userService.getEmailByRentalId(payment.getRentalId())).thenReturn(EXISTING_EMAIL);
@@ -799,8 +877,8 @@ public class PaymentServiceTest {
         // Then
         assertThat(payment.getStatus()).isEqualTo(Payment.Status.PAID);
 
-        verify(paymentRepository, times(1)).findPaymentBySessionId(payment.getSessionId());
-        verify(paymentValidator, times(1)).checkingAmountToPay(metadataDto, payment);
+        verify(paymentValidator, times(1)).checkingAmountToPay(metadataDto);
+        verify(paymentRepository, times(1)).lockPaymentForUpdate(rentalId, type);
         verify(paymentRepository, times(1)).save(payment);
         verify(userService, times(1)).getEmailByRentalId(payment.getRentalId());
         verify(notificationMapper, times(1)).toPaymentPayload(payment, EXISTING_EMAIL);
@@ -818,7 +896,7 @@ public class PaymentServiceTest {
         PaymentPayload paymentPayload = createTestPaymentPayload(payment);
         final StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(payment);
 
-        when(paymentRepository.findPaymentBySessionId(payment.getSessionId()))
+        when(paymentRepository.lockPaymentForUpdate(payment.getRentalId(), payment.getType()))
                 .thenReturn(Optional.of(payment));
         when(paymentRepository.save(payment)).thenReturn(payment);
         when(userService.getEmailByRentalId(payment.getRentalId())).thenReturn(EXISTING_EMAIL);
@@ -831,8 +909,9 @@ public class PaymentServiceTest {
         // Then
         assertThat(payment.getStatus()).isEqualTo(Payment.Status.PAID);
 
-        verify(paymentRepository, times(1)).findPaymentBySessionId(payment.getSessionId());
-        verify(paymentValidator, times(1)).checkingAmountToPay(metadataDto, payment);
+        verify(paymentValidator, times(1)).checkingAmountToPay(metadataDto);
+        verify(paymentRepository, times(1))
+                .lockPaymentForUpdate(payment.getRentalId(), payment.getType());
         verify(paymentRepository, times(1)).save(payment);
         verify(userService, times(1)).getEmailByRentalId(payment.getRentalId());
         verify(notificationMapper, times(1)).toPaymentPayload(payment, EXISTING_EMAIL);
@@ -849,18 +928,19 @@ public class PaymentServiceTest {
         Payment payment = createTestPayment(EXISTING_PAYMENT_WITH_ID_101, Payment.Status.PAID);
         StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(payment);
 
-        when(paymentRepository.findPaymentBySessionId(payment.getSessionId()))
+        when(paymentRepository.lockPaymentForUpdate(payment.getRentalId(), payment.getType()))
                 .thenReturn(Optional.of(payment));
 
         // When
         paymentService.handlePaymentSuccess(metadataDto);
 
         // Then
-        verify(paymentRepository, times(1)).findPaymentBySessionId(payment.getSessionId());
+        verify(paymentValidator, times(1)).checkingAmountToPay(metadataDto);
+        verify(paymentRepository, times(1))
+                .lockPaymentForUpdate(payment.getRentalId(), payment.getType());
         verify(paymentRepository, never()).save(payment);
-        verifyNoMoreInteractions(paymentRepository);
-        verifyNoInteractions(paymentValidator, userService);
-        verifyNoInteractions(notificationMapper, notificationService);
+        verifyNoMoreInteractions(paymentRepository, paymentValidator);
+        verifyNoInteractions(notificationMapper, notificationService, userService);
     }
 
     @Test
@@ -875,8 +955,12 @@ public class PaymentServiceTest {
         final StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(
                 expectedPayment);
 
-        when(paymentRepository.findPaymentBySessionId(expectedPayment.getSessionId()))
-                .thenReturn(Optional.empty());
+        when(paymentRepository.lockPaymentForUpdate(
+                expectedPayment.getRentalId(),
+                expectedPayment.getType()
+        ))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(expectedPayment));
         when(userService.getEmailByRentalId(expectedPayment.getRentalId()))
                 .thenReturn(EXISTING_EMAIL);
         when(notificationMapper.toPaymentPayload(any(Payment.class), anyString()))
@@ -886,11 +970,61 @@ public class PaymentServiceTest {
         paymentService.handlePaymentSuccess(metadataDto);
 
         // Then
-        verify(paymentRepository, times(1)).findPaymentBySessionId(expectedPayment.getSessionId());
-        verify(paymentValidator, times(1)).checkingAmountToPay(metadataDto, null);
+        verify(paymentValidator, times(1)).checkingAmountToPay(metadataDto);
+        verify(paymentRepository, times(2))
+                .lockPaymentForUpdate(expectedPayment.getRentalId(), expectedPayment.getType());
 
         ArgumentCaptor<Payment> captor = ArgumentCaptor.forClass(Payment.class);
         verify(paymentRepository, times(1)).save(captor.capture());
+        assertObjectsAreEqualIgnoringFields(
+                captor.getValue(),
+                expectedPayment,
+                PAYMENT_IGNORING_FIELDS);
+
+        verify(userService, times(1)).getEmailByRentalId(expectedPayment.getRentalId());
+        verify(notificationMapper, times(1)).toPaymentPayload(any(Payment.class), anyString());
+        verify(notificationService, times(1))
+                .sendMessage(NotificationType.PAYMENT_SUCCESSFUL, paymentPayload);
+        verifyNoMoreInteractions(paymentRepository, paymentValidator);
+        verifyNoMoreInteractions(userService, notificationMapper, notificationService);
+    }
+
+    @Test
+    @DisplayName("""
+            Test handlePaymentSuccess() method when payment not found and concurrency issue occurs 
+            """)
+    public void handlePaymentSuccess_PaymentNotFoundAndConcurrencyIssue_CreatesNewPayment() {
+        // Given
+        Payment expectedPayment = createTestPayment(
+                NEW_PAYMENT_ID,
+                Payment.Status.PAID
+        );
+        Payment payment = createTestPayment(NEW_PAYMENT_ID, Payment.Status.PENDING);
+        PaymentPayload paymentPayload = createTestPaymentPayload(payment);
+        final StripeSessionMetadataDto metadataDto = createTestStripeSessionMetadataDto(
+                payment);
+
+        when(paymentRepository.lockPaymentForUpdate(
+                expectedPayment.getRentalId(),
+                expectedPayment.getType()
+        ))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(payment));
+        when(userService.getEmailByRentalId(expectedPayment.getRentalId()))
+                .thenReturn(EXISTING_EMAIL);
+        when(notificationMapper.toPaymentPayload(any(Payment.class), anyString()))
+                .thenReturn(paymentPayload);
+
+        // When
+        paymentService.handlePaymentSuccess(metadataDto);
+
+        // Then
+        verify(paymentValidator, times(1)).checkingAmountToPay(metadataDto);
+        verify(paymentRepository, times(2))
+                .lockPaymentForUpdate(expectedPayment.getRentalId(), expectedPayment.getType());
+
+        ArgumentCaptor<Payment> captor = ArgumentCaptor.forClass(Payment.class);
+        verify(paymentRepository, times(2)).save(captor.capture());
         assertObjectsAreEqualIgnoringFields(
                 captor.getValue(),
                 expectedPayment,

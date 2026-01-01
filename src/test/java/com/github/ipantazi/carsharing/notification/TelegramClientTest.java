@@ -3,7 +3,6 @@ package com.github.ipantazi.carsharing.notification;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.ESCAPED_MESSAGE_TEST;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.TELEGRAM_BOT_TOKEN_TEST;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.TELEGRAM_CHAT_ID_TEST;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.TELEGRAM_MESSAGE_TEST;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -17,6 +16,9 @@ import static org.mockito.Mockito.when;
 
 import com.github.ipantazi.carsharing.notification.dto.TelegramMessageRequest;
 import com.github.ipantazi.carsharing.notification.impl.TelegramClientImpl;
+import io.github.resilience4j.ratelimiter.RateLimiter;
+import io.github.resilience4j.ratelimiter.RateLimiterConfig;
+import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,10 +55,20 @@ public class TelegramClientTest {
         when(webClientBuilder.baseUrl(anyString())).thenReturn(webClientBuilder);
         when(webClientBuilder.build()).thenReturn(webClient);
 
+        RateLimiter testRateLimiter = RateLimiter.of(
+                "test-limiter",
+                RateLimiterConfig.custom()
+                        .limitForPeriod(100)
+                        .limitRefreshPeriod(Duration.ofSeconds(1))
+                        .timeoutDuration(Duration.ZERO)
+                        .build()
+        );
+
         telegramClient = new TelegramClientImpl(
                 TELEGRAM_BOT_TOKEN_TEST,
                 TELEGRAM_CHAT_ID_TEST,
-                webClientBuilder
+                webClientBuilder,
+                testRateLimiter
         );
     }
 
@@ -72,7 +84,7 @@ public class TelegramClientTest {
         when(responseSpec.toBodilessEntity()).thenReturn(Mono.empty());
 
         // When
-        telegramClient.sendMessage(TELEGRAM_MESSAGE_TEST);
+        telegramClient.sendMessage(ESCAPED_MESSAGE_TEST);
 
         // Then
         verify(webClient).post();
@@ -80,7 +92,8 @@ public class TelegramClientTest {
         verify(requestBodySpec).bodyValue(argThat(req -> {
             TelegramMessageRequest msg = (TelegramMessageRequest) req;
             return msg.chatId().equals(TELEGRAM_CHAT_ID_TEST)
-                    && msg.text().equals(ESCAPED_MESSAGE_TEST);
+                    && msg.text().equals(ESCAPED_MESSAGE_TEST)
+                    && msg.parseMode().equals("HTML");
         }));
         verify(requestHeadersSpec, times(1)).retrieve();
         verify(responseSpec, times(1)).toBodilessEntity();
@@ -119,11 +132,15 @@ public class TelegramClientTest {
     @Test
     @DisplayName("Should not send message if telegram bot token is null")
     public void sendMessage_NullTelegramBotToken_ThrowException() {
+        // Given
+        RateLimiter limiter = RateLimiter.ofDefaults("test");
+
         // When & Then
         assertThatThrownBy(() -> new TelegramClientImpl(
                 null,
                 TELEGRAM_CHAT_ID_TEST,
-                webClientBuilder
+                webClientBuilder,
+                limiter
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Telegram bot token cannot be null or blank.");
@@ -134,11 +151,15 @@ public class TelegramClientTest {
     @Test
     @DisplayName("Should not send message if telegram chat id is null")
     public void sendMessage_NullTelegramChatId_ThrowException() {
+        // Given
+        RateLimiter limiter = RateLimiter.ofDefaults("test");
+
         // When & Then
         assertThatThrownBy(() -> new TelegramClientImpl(
                 TELEGRAM_BOT_TOKEN_TEST,
                 null,
-                webClientBuilder
+                webClientBuilder,
+                limiter
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Telegram chat id cannot be null or blank.");
@@ -149,11 +170,15 @@ public class TelegramClientTest {
     @Test
     @DisplayName("Should not send message if telegram bot token is blank")
     public void sendMessage_BlankTelegramBotToken_ThrowException() {
+        // Given
+        RateLimiter limiter = RateLimiter.ofDefaults("test");
+
         // When & Then
         assertThatThrownBy(() -> new TelegramClientImpl(
                 "   ",
                 TELEGRAM_CHAT_ID_TEST,
-                webClientBuilder
+                webClientBuilder,
+                limiter
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Telegram bot token cannot be null or blank.");
@@ -164,11 +189,15 @@ public class TelegramClientTest {
     @Test
     @DisplayName("Should not send message if telegram chat id is blank")
     public void sendMessage_BlankTelegramChatId_ThrowException() {
+        // Given
+        RateLimiter limiter = RateLimiter.ofDefaults("test");
+
         // When & Then
         assertThatThrownBy(() -> new TelegramClientImpl(
                 TELEGRAM_BOT_TOKEN_TEST,
                 "   ",
-                webClientBuilder
+                webClientBuilder,
+                limiter
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Telegram chat id cannot be null or blank.");

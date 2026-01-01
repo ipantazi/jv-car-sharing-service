@@ -4,7 +4,6 @@ import com.github.ipantazi.carsharing.dto.car.CarDto;
 import com.github.ipantazi.carsharing.dto.car.CarRequestDto;
 import com.github.ipantazi.carsharing.dto.car.InventoryRequestDto;
 import com.github.ipantazi.carsharing.dto.car.UpdateCarDto;
-import com.github.ipantazi.carsharing.exception.CarNotAvailableException;
 import com.github.ipantazi.carsharing.exception.DataProcessingException;
 import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
 import com.github.ipantazi.carsharing.mapper.CarMapper;
@@ -73,14 +72,6 @@ public class CarServiceImpl implements CarService {
     public Car findCarById(Long id) {
         return carRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Car not found with id: " + id));
-    }
-
-    @Override
-    public void validateCarAvailableForRental(Long carId) {
-        if (!carRepository.existsCarByIdAndInventoryIsGreaterThan(carId, 0)) {
-            throw new CarNotAvailableException("Car with id: %d is not available for rental."
-                    .formatted(carId));
-        }
     }
 
     @Override

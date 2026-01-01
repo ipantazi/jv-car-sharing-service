@@ -13,3 +13,5 @@ databaseChangeLog:
       file: db/changelog/changes/06-create-rental-table.yaml
   - include:
       file: db/changelog/changes/07-create-payments-table.yaml
+  - include:
+      file: db/changelog/changes/08-load-perf-data.yaml

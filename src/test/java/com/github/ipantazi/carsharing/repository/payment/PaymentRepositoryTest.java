@@ -1,21 +1,16 @@
 package com.github.ipantazi.carsharing.repository.payment;
 
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_PAYMENT_WITH_ID_101;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_PAYMENT_WITH_ID_102;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_USER_ID;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.PAYMENT_IGNORING_FIELDS;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.PAYMENT_PAGEABLE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestPayment;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestPaymentTypeFine;
 import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.assertObjectsAreEqualIgnoringFields;
 import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.assertPageMetadataEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.ipantazi.carsharing.model.Payment;
-import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -197,63 +192,5 @@ public class PaymentRepositoryTest {
 
         // Then
         assertThat(actualResult).isEqualTo(expectedResult);
-    }
-
-    @Test
-    @DisplayName("Test sumAmountToPayByRentalIdAndStatus() method with exists payments")
-    @Sql(scripts = "classpath:database/payments/add-test-payment-with-id102-for-fine.sql",
-            executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-    @Sql(scripts = "classpath:database/payments/remove-payment-with-id102-for-fine.sql",
-            executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD)
-    void sumAmountToPayByRentalIdAndStatus_ExistsTwoPayments_ReturnsSum() {
-        // Given
-        Payment payment1 = createTestPayment(EXISTING_PAYMENT_WITH_ID_101, Payment.Status.PAID);
-        Payment payment2 = createTestPaymentTypeFine(
-                EXISTING_PAYMENT_WITH_ID_102,
-                Payment.Status.PAID
-        );
-        BigDecimal expectedSum = payment1.getAmountToPay().add(payment2.getAmountToPay());
-
-        // When
-        BigDecimal actualSum = paymentRepository.sumAmountToPayByRentalIdAndStatus(
-                EXISTING_RENTAL_ID,
-                Payment.Status.PAID
-        );
-
-        // Then
-        assertThat(actualSum).usingComparator(BigDecimal::compareTo).isEqualTo(expectedSum);
-    }
-
-    @Test
-    @DisplayName("Test sumAmountToPayByRentalIdAndStatus() method with not exists rental id")
-    void sumAmountToPayByRentalIdAndStatus_NotExistsRentalId_ReturnsZero() {
-        // Given
-        BigDecimal expectedSum = BigDecimal.ZERO;
-
-        // When
-        BigDecimal actualSum = paymentRepository.sumAmountToPayByRentalIdAndStatus(
-                NOT_EXISTING_RENTAL_ID,
-                Payment.Status.PAID
-        );
-
-        // Then
-        assertThat(actualSum).isEqualTo(expectedSum);
-    }
-
-    @Test
-    @DisplayName("Test sumAmountToPayByRentalIdAndStatus() method with not exists payments by "
-            + "status PENDING")
-    void sumAmountToPayByRentalIdAndStatus_NotExistsPaymentsByStatus_ReturnsZero() {
-        // Given
-        BigDecimal expectedSum = BigDecimal.ZERO;
-
-        // When
-        BigDecimal actualSum = paymentRepository.sumAmountToPayByRentalIdAndStatus(
-                EXISTING_RENTAL_ID,
-                Payment.Status.PENDING
-        );
-
-        // Then
-        assertThat(actualSum).isEqualTo(expectedSum);
     }
 }

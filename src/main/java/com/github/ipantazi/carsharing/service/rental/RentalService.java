@@ -16,5 +16,5 @@ public interface RentalService {
 
     RentalDetailedDto returnRental(Long userId, Long rentalId);
 
-    Rental getRentalByIdAndUserId(Long userId, Long rentalId);
+    Rental getRentalEntityByIdAndUserId(Long userId, Long rentalId);
 }

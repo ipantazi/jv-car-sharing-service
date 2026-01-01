@@ -1,6 +1,7 @@
 package com.github.ipantazi.carsharing.service.car;
 
 import com.github.ipantazi.carsharing.dto.enums.OperationType;
+import com.github.ipantazi.carsharing.exception.CarNotAvailableException;
 import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
 import com.github.ipantazi.carsharing.model.Car;
 import com.github.ipantazi.carsharing.repository.car.CarRepository;
@@ -19,20 +20,22 @@ public class InventoryServiceImpl implements InventoryService {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Invalid quantity. Quantity should be positive.");
         }
-        Car car = carRepository.findByIdForUpdate(carId)
-                .orElseThrow(() -> new EntityNotFoundException("Car not found with id: " + carId));
+        Car car = carRepository.lockCarForUpdate(carId)
+                .orElseThrow(() -> new EntityNotFoundException("Car not found with id: %d"
+                        .formatted(carId)));
 
         switch (operation) {
             case INCREASE -> car.setInventory(car.getInventory() + quantity);
             case DECREASE -> {
                 if (car.getInventory() < quantity) {
-                    throw new IllegalArgumentException("Not enough inventory to decrease.");
+                    throw new CarNotAvailableException("Not enough cars with ID: %d"
+                            .formatted(carId));
                 }
                 car.setInventory(car.getInventory() - quantity);
             }
             case SET -> car.setInventory(quantity);
-            default -> throw new UnsupportedOperationException("Unsupported operation: "
-                    + operation);
+            default -> throw new UnsupportedOperationException("Unsupported operation: %s"
+                    .formatted(operation));
         }
         return carRepository.save(car);
     }

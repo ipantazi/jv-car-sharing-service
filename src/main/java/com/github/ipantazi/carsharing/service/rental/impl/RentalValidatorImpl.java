@@ -1,16 +1,11 @@
 package com.github.ipantazi.carsharing.service.rental.impl;
 
 import com.github.ipantazi.carsharing.dto.rental.RentalRequestDto;
-import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
 import com.github.ipantazi.carsharing.exception.InvalidRentalDatesException;
-import com.github.ipantazi.carsharing.model.Rental;
-import com.github.ipantazi.carsharing.repository.rental.RentalRepository;
 import com.github.ipantazi.carsharing.service.rental.RentalValidator;
-import com.github.ipantazi.carsharing.service.user.UserService;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -18,8 +13,6 @@ import org.springframework.stereotype.Component;
 public class RentalValidatorImpl implements RentalValidator {
     private static final int MIN_RENTAL_DAYS = 2;
     private static final int MAX_RENTAL_DAYS = 30;
-    private final RentalRepository rentalRepository;
-    private final UserService userService;
 
     @Override
     public void checkDatesBeforeRenting(RentalRequestDto requestDto, LocalDate rentalDate) {
@@ -37,17 +30,5 @@ public class RentalValidatorImpl implements RentalValidator {
                     .formatted(MAX_RENTAL_DAYS)
             );
         }
-    }
-
-    @Override
-    public Rental getRentalWithAccessCheck(Long userId, Long rentalId) {
-        Rental rental = rentalRepository.findById(rentalId)
-                .orElseThrow(() -> new EntityNotFoundException("Rental not found with id: "
-                        + rentalId));
-
-        if (!userService.canAccessRental(userId, rental)) {
-            throw new AccessDeniedException("You do not have permission to access this rental");
-        }
-        return rental;
     }
 }

@@ -5,8 +5,8 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.7</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <version>3.5.9</version> <!--don't use 4.0.0-->
+        <relativePath/>
     </parent>
     <groupId>com.github.ipantazi</groupId>
     <artifactId>jv-car-sharing-service</artifactId>
@@ -34,15 +34,16 @@
         <lombok.version>1.18.42</lombok.version>
         <liquibase.version>5.0.1</liquibase.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <webmvc-ui.version>2.8.13</webmvc-ui.version>
+        <webmvc-ui.version>2.8.14</webmvc-ui.version> <!-- don't use 3.0.0 -->
         <jjwt.version>0.13.0</jjwt.version>
         <assertj.version>4.0.0-M1</assertj.version>
-        <testcontainers.version>2.0.1</testcontainers.version>
         <org.jacoco.version>0.8.14</org.jacoco.version>
         <maven-checkstyle.version>3.6.0</maven-checkstyle.version>
         <stripe-java.version>29.5.0</stripe-java.version> <!--don't use 30.0.0-->
         <mockito-inline.version>5.2.0</mockito-inline.version>
         <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
+        <testcontainers.version>1.21.3</testcontainers.version> <!--don't use 2.0.0-->
+        <spring-cloud.version>2025.0.1</spring-cloud.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -50,6 +51,13 @@
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers-bom</artifactId>
                 <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -157,6 +165,30 @@
             <artifactId>mockito-inline</artifactId>
             <version>${mockito-inline.version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>jdbc</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-circuitbreaker-reactor-resilience4j</artifactId>
         </dependency>
     </dependencies>
     <build>

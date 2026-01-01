@@ -228,7 +228,12 @@ public class AuthenticationControllerTest {
     }
 
     @Test
-    @Sql(scripts = "classpath:database/users/remove-new-test-user-from-user-table.sql",
+    @Sql(scripts = "classpath:database/users/clear-all-users.sql",
+            executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+    @Sql(scripts = {
+            "classpath:database/users/clear-all-users.sql",
+            "classpath:database/users/insert-test-users.sql",
+    },
             executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD)
     @DisplayName("Registration of a new user.")
     void registerUser_ValidUserRegistrationRequestDto_Success() throws Exception {

@@ -4,9 +4,14 @@ import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_EMAIL;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_RENTAL_ID;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.SAFE_DELETED_USER_ID;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.USER_DTO_IGNORING_FIELD;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUser;
+import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.assertObjectsAreEqualIgnoringFields;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.github.ipantazi.carsharing.model.User;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -77,5 +82,33 @@ public class UserRepositoryTest {
 
         // Then
         assertThat(actual).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Test lockUserForUpdate() method with existing user ID.")
+    void lockUserForUpdate_ExistingUser_ReturnsUser() {
+        // Given
+        User expectedUser = createTestUser(EXISTING_USER_ID);
+
+        // When
+        Optional<User> actualUserOpt = userRepository.lockUserForUpdate(EXISTING_USER_ID);
+
+        // Then
+        assertThat(actualUserOpt).isPresent();
+        assertObjectsAreEqualIgnoringFields(
+                actualUserOpt.get(),
+                expectedUser,
+                USER_DTO_IGNORING_FIELD
+        );
+    }
+
+    @Test
+    @DisplayName("Test lockUserForUpdate() method when user ID doesn't exist.")
+    void lockUserForUpdate_NotExistingUser_ReturnsEmptyOptional() {
+        // When
+        Optional<User> actualUser = userRepository.lockUserForUpdate(NOT_EXISTING_USER_ID);
+
+        // Then
+        assertThat(actualUser).isEmpty();
     }
 }

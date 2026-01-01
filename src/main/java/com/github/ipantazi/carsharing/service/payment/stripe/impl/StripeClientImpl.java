@@ -84,8 +84,7 @@ public class StripeClientImpl implements StripeClient {
                         .build();
 
         RequestOptions options = RequestOptions.builder()
-                .setIdempotencyKey("rental-" + rentalId + "-type-" + type + "-ts-"
-                        + System.currentTimeMillis())
+                .setIdempotencyKey("rental-" + rentalId + "-type-" + type)
                 .build();
         return getMetadataFromSession(Session.create(params, options));
     }

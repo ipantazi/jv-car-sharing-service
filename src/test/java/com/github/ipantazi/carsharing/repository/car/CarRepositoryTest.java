@@ -13,7 +13,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.ipantazi.carsharing.model.Car;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,8 +30,6 @@ import org.springframework.test.context.jdbc.Sql;
 public class CarRepositoryTest {
     @Autowired
     private CarRepository carRepository;
-    /*@Autowired
-    private EntityManager entityManager;*/
 
     @Test
     @DisplayName("Check for safe deleted car existence by model and brand.")
@@ -65,14 +62,14 @@ public class CarRepositoryTest {
     }
 
     @Test
-    @DisplayName("Test findByIdForUpdate() method works.")
-    void findByIdForUpdate_ExistingCar_ReturnsCarOptional() {
+    @DisplayName("Test lockCarForUpdate() method works with existing car ID.")
+    void lockCarForUpdate_ExistingCar_ReturnsCarOptional() {
         // Given
         Car expectedCar = createTestCar(EXISTING_CAR_ID);
-        expectedCar.setDailyFee(expectedCar.getDailyFee().setScale(2, RoundingMode.HALF_UP));
+        // expectedCar.setDailyFee(expectedCar.getDailyFee().setScale(2, RoundingMode.HALF_UP));
 
         // When
-        Optional<Car> actualCarOpt = carRepository.findByIdForUpdate(EXISTING_CAR_ID);
+        Optional<Car> actualCarOpt = carRepository.lockCarForUpdate(EXISTING_CAR_ID);
 
         // Then
         assertThat(actualCarOpt).isPresent();
@@ -80,10 +77,10 @@ public class CarRepositoryTest {
     }
 
     @Test
-    @DisplayName("Test findByIdForUpdate() method works.")
-    void findByIdForUpdate_NotExistingCar_ReturnsEmptyOptional() {
+    @DisplayName("Test lockCarForUpdate() method works when car ID does not exist.")
+    void lockCarForUpdate_NotExistingCar_ReturnsEmptyOptional() {
         // When
-        Optional<Car> actualCarOpt = carRepository.findByIdForUpdate(NOT_EXISTING_CAR_ID);
+        Optional<Car> actualCarOpt = carRepository.lockCarForUpdate(NOT_EXISTING_CAR_ID);
 
         // Then
         assertThat(actualCarOpt).isEmpty();
@@ -111,65 +108,4 @@ public class CarRepositoryTest {
         // Then
         assertThat(actualDailyFeeOpt).isEmpty();
     }
-
-    /*
-    @Test
-    @DisplayName("Should lock the car row with PESSIMISTIC_WRITE")
-    @Sql(scripts = {
-            "classpath:database/cars/clear-all-cars.sql",
-            "classpath:database/cars/insert-test-cars.sql"
-    },
-            executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD)
-    void shouldLockCarWithPessimisticWrite() throws Exception {
-        // Prepare
-        Car car = createTestCar(NEW_CAR_ID);
-        car.setId(null);
-        entityManager.persist(car);
-        entityManager.flush();
-        entityManager.clear();
-
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        CountDownLatch latch = new CountDownLatch(1);
-
-        Future<Void> future = executor.submit(() -> {
-            TransactionTemplate txTemplate = new TransactionTemplate(
-                    new JpaTransactionManager(entityManager.getEntityManagerFactory())
-            );
-            txTemplate.execute(status -> {
-                Optional<Car> lockedCar = carRepository.findByIdForUpdate(car.getId());
-                assertThat(lockedCar).isPresent();
-                System.out.println("Thread 1 locked the car");
-                latch.countDown();
-                try {
-                    Thread.sleep(3000);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new AssertionError("Thread was interrupted", e);
-                }
-
-                return null;
-            });
-            return null;
-        });
-
-        latch.await();
-
-        Future<Void> second = executor.submit(() -> {
-            TransactionTemplate txTemplate = new TransactionTemplate(
-                    new JpaTransactionManager(entityManager.getEntityManagerFactory())
-            );
-            txTemplate.setTimeout(5);
-            txTemplate.execute(status -> {
-                Optional<Car> lockedCar = carRepository.findByIdForUpdate(car.getId());
-                assertThat(lockedCar).isPresent();
-                System.out.println("Thread 2 also acquired lock after wait");
-                return null;
-            });
-            return null;
-        });
-
-        future.get();
-        second.get();
-        executor.shutdown();
-    }*/
 }

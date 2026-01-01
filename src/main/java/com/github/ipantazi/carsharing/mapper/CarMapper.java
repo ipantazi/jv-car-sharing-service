@@ -38,7 +38,7 @@ public interface CarMapper {
 
     @AfterMapping
     default void setType(@MappingTarget Car car, CarRequestDto carRequestDto) {
-        car.setType(Car.Type.valueOfStatus(carRequestDto.type()));
+        car.setType(Car.Type.valueOfType(carRequestDto.type()));
     }
 
     @Mapping(target = "id", ignore = true)

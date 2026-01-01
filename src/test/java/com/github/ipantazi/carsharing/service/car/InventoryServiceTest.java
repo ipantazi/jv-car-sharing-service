@@ -16,6 +16,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.github.ipantazi.carsharing.dto.enums.OperationType;
+import com.github.ipantazi.carsharing.exception.CarNotAvailableException;
 import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
 import com.github.ipantazi.carsharing.model.Car;
 import com.github.ipantazi.carsharing.repository.car.CarRepository;
@@ -42,7 +43,7 @@ public class InventoryServiceTest {
         int newInventory = 10;
         Car car = createTestCar(EXISTING_USER_ID);
 
-        when(carRepository.findByIdForUpdate(car.getId())).thenReturn(Optional.of(car));
+        when(carRepository.lockCarForUpdate(car.getId())).thenReturn(Optional.of(car));
         when(carRepository.save(car)).thenReturn(car);
 
         // When
@@ -54,7 +55,7 @@ public class InventoryServiceTest {
 
         // Then
         assertThat(actualCar.getInventory()).isEqualTo(newInventory);
-        verify(carRepository, times(1)).findByIdForUpdate(car.getId());
+        verify(carRepository, times(1)).lockCarForUpdate(car.getId());
         verify(carRepository, times(1)).save(car);
         verifyNoMoreInteractions(carRepository);
     }
@@ -67,7 +68,7 @@ public class InventoryServiceTest {
         Car car = createTestCar(EXISTING_USER_ID);
         int oldInventory = car.getInventory();
 
-        when(carRepository.findByIdForUpdate(car.getId())).thenReturn(Optional.of(car));
+        when(carRepository.lockCarForUpdate(car.getId())).thenReturn(Optional.of(car));
         when(carRepository.save(car)).thenReturn(car);
 
         // When
@@ -80,7 +81,7 @@ public class InventoryServiceTest {
         // Then
         assertThat(actualCar.getInventory())
                 .isEqualTo(oldInventory + inventoryFromRequest);
-        verify(carRepository, times(1)).findByIdForUpdate(car.getId());
+        verify(carRepository, times(1)).lockCarForUpdate(car.getId());
         verify(carRepository, times(1)).save(car);
         verifyNoMoreInteractions(carRepository);
     }
@@ -93,7 +94,7 @@ public class InventoryServiceTest {
         Car car = createTestCar(EXISTING_USER_ID);
         int oldInventory = car.getInventory();
 
-        when(carRepository.findByIdForUpdate(car.getId())).thenReturn(Optional.of(car));
+        when(carRepository.lockCarForUpdate(car.getId())).thenReturn(Optional.of(car));
         when(carRepository.save(car)).thenReturn(car);
 
         // When
@@ -106,7 +107,7 @@ public class InventoryServiceTest {
         // Then
         assertThat(actualCar.getInventory())
                 .isEqualTo(oldInventory - inventoryFromRequest);
-        verify(carRepository, times(1)).findByIdForUpdate(car.getId());
+        verify(carRepository, times(1)).lockCarForUpdate(car.getId());
         verify(carRepository, times(1)).save(car);
         verifyNoMoreInteractions(carRepository);
     }
@@ -118,16 +119,16 @@ public class InventoryServiceTest {
         int inventoryFromRequest = 10;
         Car car = createTestCar(EXISTING_USER_ID);
 
-        when(carRepository.findByIdForUpdate(car.getId())).thenReturn(Optional.of(car));
+        when(carRepository.lockCarForUpdate(car.getId())).thenReturn(Optional.of(car));
 
         // When & Then
         assertThatThrownBy(() -> inventoryService.adjustInventory(
                         car.getId(),
                         inventoryFromRequest,
                         OperationType.DECREASE))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Not enough inventory to decrease.");
-        verify(carRepository, times(1)).findByIdForUpdate(car.getId());
+                .isInstanceOf(CarNotAvailableException.class)
+                .hasMessage("Not enough cars with ID: %d".formatted(car.getId()));
+        verify(carRepository, times(1)).lockCarForUpdate(car.getId());
         verify(carRepository, never()).save(any());
         verifyNoMoreInteractions(carRepository);
     }
@@ -136,7 +137,7 @@ public class InventoryServiceTest {
     @DisplayName("Test adjustInventory() method with invalid car id.")
     public void adjustInventory_InvalidCarId_ThrowsException() {
         // Given
-        when(carRepository.findByIdForUpdate(NOT_EXISTING_CAR_ID)).thenReturn(Optional.empty());
+        when(carRepository.lockCarForUpdate(NOT_EXISTING_CAR_ID)).thenReturn(Optional.empty());
 
         // When & Then
         assertThatThrownBy(() -> inventoryService.adjustInventory(
@@ -146,7 +147,7 @@ public class InventoryServiceTest {
         ))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessage("Car not found with id: " + NOT_EXISTING_CAR_ID);
-        verify(carRepository, times(1)).findByIdForUpdate(NOT_EXISTING_CAR_ID);
+        verify(carRepository, times(1)).lockCarForUpdate(NOT_EXISTING_CAR_ID);
         verify(carRepository, never()).save(any());
         verifyNoMoreInteractions(carRepository);
     }
@@ -167,7 +168,7 @@ public class InventoryServiceTest {
                 .hasMessage("Invalid quantity. Quantity should be positive.");
 
         // Then
-        verify(carRepository, never()).findByIdForUpdate(any());
+        verify(carRepository, never()).lockCarForUpdate(any());
         verify(carRepository, never()).save(any());
         verifyNoInteractions(carRepository);
     }

@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,8 +33,6 @@ public class OverdueRentalCheckerImpl implements OverdueRentalChecker {
     private final CarService carService;
     private final Calculator calculator;
 
-    // @Scheduled(cron = "0 */1 * * * *") // every minute for testing
-    @Scheduled(cron = "0 0 9 * * *")
     @Override
     @Transactional(readOnly = true)
     public void checkOverdueRental() {

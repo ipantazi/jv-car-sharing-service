@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: load-1000-cars
+      author: Illia Pantazi
+      changes:
+        - loadData:
+            file: classpath:db/changelog/data/cars_1000.csv
+            tableName: cars
+            separator: ","
+            encoding: UTF-8
+
+  - changeSet:
+      id: load-97-users
+      author: Illia Pantazi
+      changes:
+        - loadData:
+            file: classpath:db/changelog/data/users_97.csv
+            tableName: users
+            separator: ","
+            encoding: UTF-8
+
+  - changeSet:
+      id: load-50000-rentals
+      author: Illia Pantazi
+      changes:
+        - loadData:
+            file: classpath:db/changelog/data/rentals_50000.csv
+            tableName: rentals
+            separator: ","
+            encoding: UTF-8

@@ -1,6 +1,5 @@
 package com.github.ipantazi.carsharing.controller.car;
 
-import static com.github.ipantazi.carsharing.util.TestDataUtil.ALTERNATIVE_CAR_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_BRAND;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_DAILY_FEE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.CAR_DTO_IGNORING_FIELD;
@@ -589,7 +588,8 @@ public class CarControllerTest {
     @DisplayName("Test update car by id with an existing car with the given model and brand ")
     void updateCar_ExistingCarWithSameModelAndBrand_ShouldReturnConflict() throws Exception {
         // Given
-        UpdateCarDto updateCarDto = createTestUpdateCarDto(createTestCarDto(ALTERNATIVE_CAR_ID));
+        UpdateCarDto updateCarDto = createTestUpdateCarDto(
+                createTestCarDto(EXISTING_CAR_ID));
         String jsonRequest = objectMapper.writeValueAsString(updateCarDto);
 
         // When
@@ -875,7 +875,7 @@ public class CarControllerTest {
                 result,
                 objectMapper,
                 BAD_REQUEST,
-                "Not enough inventory to decrease."
+                "Not enough cars with ID: %d".formatted(EXISTING_CAR_ID)
         );
     }
 
