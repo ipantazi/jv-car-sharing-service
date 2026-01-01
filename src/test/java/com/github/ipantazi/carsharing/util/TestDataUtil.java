@@ -42,14 +42,13 @@ public class TestDataUtil {
     public static final int EXPECTED_RENTALS_SIZE = 2;
     public static final Long NEGATIVE_ID = -1L;
     public static final Long EXISTING_CAR_ID = 101L;
-    public static final Long ALTERNATIVE_CAR_ID = 103L;
     public static final Long SAFE_DELETED_CAR_ID = 104L;
     public static final Long NEW_CAR_ID = 105L;
     public static final Long NOT_EXISTING_CAR_ID = 999L;
     public static final Long EXISTING_USER_ID = 101L;
     public static final Long EXISTING_ID_ANOTHER_USER = 102L;
-    public static final Long SAFE_DELETED_USER_ID = 103L;
-    public static final Long NEW_USER_ID = 104L;
+    public static final Long SAFE_DELETED_USER_ID = 106L;
+    public static final Long NEW_USER_ID = 107L;
     public static final Long NOT_EXISTING_USER_ID = 999L;
     public static final Long EXISTING_RENTAL_ID = 101L;
     public static final Long EXISTING_RENTAL_ID_ANOTHER_USER = 102L;
@@ -74,8 +73,8 @@ public class TestDataUtil {
     public static final String NOT_HASHED_PASSWORD = "Test&password1";
     public static final String NOT_EXISTING_NOT_HASHED_PASSWORD = "Not&existingPassword1";
     public static final String NEW_NOT_HASHED_PASSWORD = "New&password1";
-    public static final String B_CRYPT_PASSWORD = "$2a$10$TYVQIW25Boqejv0QvAYYn.6nQHmiypul1BkRgww"
-            + "1wPxSuLYBUg0f.";
+    public static final String B_CRYPT_PASSWORD = "$2a$10$HmJz/wZv5WFjJArzq90dTOcGmYMsYtd.x61Z6qsg"
+            + "NoXTgtSJceOqe";
     public static final String FIRST_NAME = "FirstName";
     public static final String LAST_NAME = "LastName";
 
