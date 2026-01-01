@@ -36,6 +36,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,15 +63,13 @@ public class RentalServiceImpl implements RentalService {
         LocalDate rentalDate = LocalDate.now(clock);
 
         rentalValidator.checkDatesBeforeRenting(rentalRequestDto, rentalDate);
-        carService.validateCarAvailableForRental(carId);
         paymentValidator.checkForPendingPayments(userId);
 
-        Rental rental = rentalMapper.toRentalEntity(rentalRequestDto);
-        rental.setRentalDate(rentalDate);
-        rental.setUserId(userId);
-        rentalRepository.save(rental);
-
+        rentalRepository.lockActiveRentalsForUpdateByCarId(carId);
         inventoryService.adjustInventory(carId, 1, OperationType.DECREASE);
+
+        Rental rental = rentalMapper.toRentalEntity(rentalRequestDto, userId, rentalDate);
+        rentalRepository.save(rental);
 
         CarDto carDto = carService.getById(carId);
         NewRentalPayload newRentalPayload = notificationMapper.toRentalPayload(
@@ -99,7 +98,13 @@ public class RentalServiceImpl implements RentalService {
     @Override
     @Transactional(readOnly = true)
     public RentalDetailedDto getRental(Long userId, Long rentalId) {
-        Rental rental = rentalValidator.getRentalWithAccessCheck(userId, rentalId);
+        Rental rental = rentalRepository.findById(rentalId)
+                .orElseThrow(() -> new EntityNotFoundException("Rental not found with id: "
+                        + rentalId));
+
+        if (!userService.canAccessRental(userId, rental)) {
+            throw new AccessDeniedException("You do not have permission to access this rental");
+        }
         return buildRentalDetailedDto(rental);
     }
 
@@ -107,24 +112,29 @@ public class RentalServiceImpl implements RentalService {
     @Transactional
     public RentalDetailedDto returnRental(Long userId, Long rentalId) {
         LocalDate actualReturnDate = LocalDate.now(clock);
-        Rental rental = rentalValidator.getRentalWithAccessCheck(userId, rentalId);
+
+        Rental rental = rentalRepository.lockRentalForUpdate(rentalId)
+                .orElseThrow(() -> new EntityNotFoundException("Rental not found with id: "
+                        + rentalId));
+
+        if (!userService.canAccessRental(userId, rental)) {
+            throw new AccessDeniedException("You do not have permission to access this rental");
+        }
 
         if (rental.getActualReturnDate() != null) {
             throw new IllegalArgumentException("Rental with id %d is already returned on %s"
                     .formatted(rental.getId(), rental.getActualReturnDate()));
         }
-
         rental.setActualReturnDate(actualReturnDate);
+
         rentalRepository.save(rental);
-
         inventoryService.adjustInventory(rental.getCarId(), 1, OperationType.INCREASE);
-
         return buildRentalDetailedDto(rental);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Rental getRentalByIdAndUserId(Long userId, Long rentalId) {
+    public Rental getRentalEntityByIdAndUserId(Long userId, Long rentalId) {
         return rentalRepository.findRentalByIdAndUserId(rentalId, userId)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Rental not found with id: %d and user id: %d."
@@ -137,16 +147,19 @@ public class RentalServiceImpl implements RentalService {
     }
 
     private RentalResponseDto buildRentalResponseDto(Rental rental, CarDto carDto) {
-        RentalResponseDto dto = rentalMapper.toRentalDto(rental);
-        dto.setCarDto(carDto);
-        dto.setStatus(getRentalStatus(rental));
-        dto.setBaseRentalCost(calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental));
-        return dto;
+        RentalStatus rentalStatus = getRentalStatus(rental);
+        BigDecimal baseRentalCost = calculator.calculateBaseRentalCost(carDto.getDailyFee(),
+                rental);
+
+        return rentalMapper.toRentalDto(
+                rental,
+                carDto,
+                rentalStatus,
+                baseRentalCost
+        );
     }
 
     private RentalDetailedDto buildRentalDetailedDto(Rental rental) {
-        RentalDetailedDto rentalDetailedDto = rentalMapper.toRentalDetailedDto(rental);
-
         CarDto carDto = carService.getById(rental.getCarId());
         BigDecimal baseCost = calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental);
 
@@ -160,15 +173,16 @@ public class RentalServiceImpl implements RentalService {
         BigDecimal amountPaid = calculator.calculateTotalAmountPaid(rental.getId());
         BigDecimal amountDue = totalCost.subtract(amountPaid);
 
-        rentalDetailedDto.setCarDto(carDto);
-        rentalDetailedDto.setBaseRentalCost(baseCost);
-        rentalDetailedDto.setPenaltyAmount(penaltyAmount);
-        rentalDetailedDto.setTotalCost(totalCost);
-        rentalDetailedDto.setAmountPaid(amountPaid);
-        rentalDetailedDto.setAmountDue(amountDue);
-        rentalDetailedDto.setStatus(getRentalStatus(rental));
-
-        return rentalDetailedDto;
+        return rentalMapper.toRentalDetailedDto(
+                rental,
+                carDto,
+                baseCost,
+                penaltyAmount,
+                totalCost,
+                amountPaid,
+                amountDue,
+                getRentalStatus(rental)
+                );
     }
 
     private Page<RentalResponseDto> mapToRentalResponsePage(Page<Rental> rentalPage,
