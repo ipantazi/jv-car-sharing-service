@@ -28,6 +28,4 @@ public interface CarRepository extends JpaRepository<Car, Long> {
 
     @Query("SELECT c.dailyFee FROM Car c WHERE c.id = :carId")
     Optional<BigDecimal> findDailyFeeByCarId(@Param("carId") Long carId);
-
-    boolean existsCarByIdAndInventoryIsGreaterThan(Long id, int inventory);
 }
