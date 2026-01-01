@@ -26,6 +26,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -67,11 +68,14 @@ public class PaymentServiceImpl implements PaymentService {
             PaymentRequestDto paymentRequestDto,
             UriComponentsBuilder uriBuilder
     ) throws StripeException {
+
         Payment.Type type = Payment.Type.valueOfType(paymentRequestDto.type());
         Long rentalId = paymentRequestDto.rentalId();
-        Rental rental = rentalService.getRentalByIdAndUserId(userId, rentalId);
 
-        Optional<Payment> paymentOpt = findExpiredPaymentOrThrow(rentalId, type);
+        Rental rental = rentalService.getRentalEntityByIdAndUserId(userId, rentalId);
+
+        Optional<Payment> paymentOpt = paymentRepository.lockPaymentForUpdate(rentalId, type)
+                .map(this::validatePaymentStatus);
 
         StripeSessionMetadataDto sessionDto = createStripeSession(
                 rental,
@@ -79,9 +83,20 @@ public class PaymentServiceImpl implements PaymentService {
                 paymentRequestDto
         );
 
-        Payment payment = paymentOpt.map(value -> updatePaymentWithNewSession(value, sessionDto))
+        Payment payment = paymentOpt
+                .map(existing -> updatePaymentWithNewSession(existing, sessionDto, STATUS_PENDING))
                 .orElseGet(() -> buildPayment(sessionDto, STATUS_PENDING));
-        return paymentMapper.toPaymentResponseDto(paymentRepository.save(payment));
+
+        try {
+            payment = paymentRepository.save(payment);
+        } catch (DataIntegrityViolationException e) {
+            log.info("Concurrent payment insert detected for rentalId={}, type={} (createPayment)",
+                    rentalId, type);
+            payment = paymentRepository.lockPaymentForUpdate(rentalId, type)
+                    .orElseThrow(() -> e);
+        }
+
+        return paymentMapper.toPaymentResponseDto(payment);
     }
 
     @Override
@@ -105,10 +120,14 @@ public class PaymentServiceImpl implements PaymentService {
             PaymentRequestDto paymentRequestDto,
             UriComponentsBuilder uriBuilder
     ) throws StripeException {
+
         Payment.Type type = Payment.Type.valueOfType(paymentRequestDto.type());
         Long rentalId = paymentRequestDto.rentalId();
-        Rental rental = rentalService.getRentalByIdAndUserId(userId, rentalId);
-        Payment payment = findExpiredPaymentOrThrow(rentalId, type)
+
+        Rental rental = rentalService.getRentalEntityByIdAndUserId(userId, rentalId);
+
+        Payment payment = paymentRepository.lockPaymentForUpdate(rentalId, type)
+                .map(this::validatePaymentStatus)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "No previous session found for this rental: %d and type: %s."
                                 .formatted(rentalId, type)
@@ -120,33 +139,46 @@ public class PaymentServiceImpl implements PaymentService {
                 uriBuilder,
                 paymentRequestDto
         );
-        updatePaymentWithNewSession(payment, sessionDto);
+
+        updatePaymentWithNewSession(payment, sessionDto, STATUS_PENDING);
+
         return paymentMapper.toPaymentResponseDto(paymentRepository.save(payment));
     }
 
     @Override
     @Transactional
     public void handlePaymentSuccess(StripeSessionMetadataDto metadataDto) {
+        Long rentalId = metadataDto.rentalId();
+        Payment.Type type = metadataDto.type();
         Payment payment;
-        String sessionId = metadataDto.sessionId();
-        Optional<Payment> paymentOpt = paymentRepository.findPaymentBySessionId(sessionId);
 
         paymentValidator.checkingAmountToPay(metadataDto);
+        Optional<Payment> paymentOpt = paymentRepository.lockPaymentForUpdate(rentalId, type);
+
         if (paymentOpt.isPresent()) {
             payment = paymentOpt.get();
             if (payment.getStatus() == STATUS_PAID) {
                 return;
             }
+            updatePaymentWithNewSession(payment, metadataDto, STATUS_PAID);
+            paymentRepository.save(payment);
 
-            payment.setStatus(STATUS_PAID);
         } else {
             payment = buildPayment(metadataDto, STATUS_PAID);
-            if (payment.getSessionUrl() == null) {
-                log.warn("Webhook received for session {} without URL", sessionId);
+            try {
+                paymentRepository.save(payment);
+            } catch (DataIntegrityViolationException e) {
+                log.info("Concurrent payment insert detected for rentalId={}, type={} (WebHook)",
+                        rentalId, type);
             }
+            payment = paymentRepository.lockPaymentForUpdate(rentalId, type)
+                    .orElseThrow(() ->
+                            new IllegalStateException("Payment must exist after webhook"));
         }
-
-        paymentRepository.save(payment);
+        if (payment.getStatus() != STATUS_PAID) {
+            updatePaymentWithNewSession(payment, metadataDto, STATUS_PAID);
+            paymentRepository.save(payment);
+        }
 
         PaymentPayload paymentPayload = notificationMapper.toPaymentPayload(
                 payment,
@@ -172,28 +204,35 @@ public class PaymentServiceImpl implements PaymentService {
         return stripeClient.createSession(amount, successUrl, cancelUrl, requestDto);
     }
 
-    private Optional<Payment> findExpiredPaymentOrThrow(Long rentalId, Payment.Type type) {
-        return paymentRepository.findPaymentByRentalIdAndType(rentalId, type)
-                .map(payment -> switch (payment.getStatus()) {
-                    case PAID -> throw new PaymentAlreadyPaidException(
-                            "Payment for rental: %d and type: %s already paid"
-                                    .formatted(rentalId, type));
-                    case PENDING -> throw new PendingPaymentsExistException(
-                            "There is already a pending payment for rental: %d and type: %s. "
-                                    .formatted(rentalId, type)
-                                    + "Please complete your session by url: %s"
-                                    .formatted(payment.getSessionUrl()));
-                    case EXPIRED -> payment;
-                });
+    private Payment validatePaymentStatus(Payment payment) {
+        Long rentalId = payment.getRentalId();
+        String type = payment.getType().name();
+
+        return switch (payment.getStatus()) {
+            case PAID -> throw new PaymentAlreadyPaidException(rentalId, type);
+            case PENDING -> throw new PendingPaymentsExistException(
+                    "There is already a pending payment for rental: %d and type: %s. "
+                            .formatted(rentalId, type)
+                            + "Please complete your session by url: %s"
+                            .formatted(payment.getSessionUrl())
+            );
+            case EXPIRED -> payment;
+        };
     }
 
     private Payment updatePaymentWithNewSession(Payment payment,
-                                                StripeSessionMetadataDto sessionDto) {
-        payment.setSessionUrl(sessionDto.sessionUrl());
-        payment.setSessionId(sessionDto.sessionId());
-        payment.setAmountToPay(sessionDto.amountToPay());
-        payment.setStatus(STATUS_PENDING);
+                                                StripeSessionMetadataDto metadataDto,
+                                                Payment.Status status) {
 
+        if (metadataDto.sessionUrl() == null) {
+            log.warn("The StripeSessionMetadataDto does not contain the URL for session ID: {}",
+                    metadataDto.sessionId());
+        } else {
+            payment.setSessionUrl(metadataDto.sessionUrl());
+        }
+        payment.setSessionId(metadataDto.sessionId());
+        payment.setAmountToPay(metadataDto.amountToPay());
+        payment.setStatus(status);
         return payment;
     }
 
@@ -205,7 +244,6 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setAmountToPay(metadataDto.amountToPay());
         payment.setSessionUrl(metadataDto.sessionUrl());
         payment.setStatus(status);
-
         return payment;
     }
 }

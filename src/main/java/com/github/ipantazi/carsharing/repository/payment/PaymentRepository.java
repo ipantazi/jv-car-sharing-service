@@ -1,12 +1,14 @@
 package com.github.ipantazi.carsharing.repository.payment;
 
 import com.github.ipantazi.carsharing.model.Payment;
+import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -30,6 +32,13 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             """)
     Page<Payment> findPaymentsByUserId(@Param("userId") Long userId, Pageable pageable);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select p from Payment p
+        where p.rentalId = :rentalId and p.type = :type
+            """)
+    Optional<Payment> lockPaymentForUpdate(Long rentalId, Payment.Type type);
+
     @Query(value = """
     SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
     FROM payments p
@@ -46,5 +55,4 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             """)
     BigDecimal sumAmountToPayByRentalIdAndStatus(@Param("rentalId") Long rentalId,
                                                  @Param("status") Payment.Status status);
-
 }
