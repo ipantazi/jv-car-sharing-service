@@ -9,18 +9,15 @@ import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.github.ipantazi.carsharing.config.BaseJpaIntegrationTest;
 import com.github.ipantazi.carsharing.model.Rental;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.jdbc.Sql;
 
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Sql(scripts = {
         "classpath:database/rentals/clear-all-rentals.sql",
         "classpath:database/cars/clear-all-cars.sql",
@@ -36,7 +33,7 @@ import org.springframework.test.context.jdbc.Sql;
         "classpath:database/users/clear-all-users.sql"
 },
         executionPhase = Sql.ExecutionPhase.AFTER_TEST_CLASS)
-public class RentalRepositoryTest {
+public class RentalRepositoryTest extends BaseJpaIntegrationTest {
     @Autowired
     private RentalRepository rentalRepository;
 

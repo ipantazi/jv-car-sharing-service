@@ -10,20 +10,17 @@ import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.
 import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.assertPageMetadataEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.github.ipantazi.carsharing.config.BaseJpaIntegrationTest;
 import com.github.ipantazi.carsharing.model.Payment;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.test.context.jdbc.Sql;
 
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Sql(scripts = {
         "classpath:database/cars/insert-test-cars.sql",
         "classpath:database/users/insert-test-users.sql",
@@ -36,7 +33,7 @@ import org.springframework.test.context.jdbc.Sql;
         "classpath:database/users/clear-all-users.sql",
         "classpath:database/cars/clear-all-cars.sql"
 }, executionPhase = Sql.ExecutionPhase.AFTER_TEST_CLASS)
-public class PaymentRepositoryTest {
+public class PaymentRepositoryTest extends BaseJpaIntegrationTest {
     @Autowired
     private PaymentRepository paymentRepository;
 

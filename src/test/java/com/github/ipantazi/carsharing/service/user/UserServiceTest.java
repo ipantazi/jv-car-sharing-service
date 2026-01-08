@@ -469,6 +469,7 @@ public class UserServiceTest {
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessage("Can't find user with id: " + EXISTING_USER_ID);
         verify(userRepository, times(1)).existsSoftDeletedUserById(EXISTING_USER_ID);
+        verify(userRepository, times(1)).existsById(EXISTING_USER_ID);
         verifyNoMoreInteractions(userRepository);
     }
 
@@ -511,6 +512,8 @@ public class UserServiceTest {
 
         //Then
         assertThat(actualUserId).isEqualTo(EXISTING_USER_ID);
+        verify(userRepository).existsSoftDeletedUserById(EXISTING_USER_ID);
+        verify(userRepository).existsById(EXISTING_USER_ID);
         verifyNoMoreInteractions(userRepository);
     }
 

@@ -125,6 +125,8 @@ public class TestDataUtil {
     public static final String CANCEL_URL = "http://localhost/cancel";
     public static final String LOCAL_HOST = "http://localhost";
 
+    public static final String JWT_SECRET_TEST = "testsecretkeytestsecretkeytest12";
+    public static final Long JWT_EXPIRATION_TIME_TEST = 3600000L;
     public static final String PAYLOAD_TEST = "{\"id\":\"TEST\"}";
     public static final String SIG_HEADER_TEST = "t=123,v1=TEST";
     public static final String ENDPOINT_SECRET_TEST = "whsec_test_secret";
@@ -157,6 +159,7 @@ public class TestDataUtil {
     public static final BigDecimal INVALID_AMOUNT_TO_PAY = new BigDecimal("999.999");
     public static final int INVALID_MAX_RENTAL_DAYS = 999;
     public static final int INVALID_MIN_RENTAL_DAYS = 1;
+    public static final String INVALID_TOKEN = "invalidtoken";
     public static final String INVALID_SESSION_ID = "non-existent-session-id";
     public static final String INVALID_STRIPE_AMOUNT_TO_PAY = "non-existent-payment-id";
     public static final String INVALID_PAYMENT_TYPE = "UNKNOWN_TYPE";
