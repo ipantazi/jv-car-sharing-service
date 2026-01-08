@@ -887,9 +887,9 @@ public class CarControllerTest {
         String jsonRequest = """
         {
           "inventory": 5,
-          "operationType": "NOT_EXISTING_TYPE"
+          "operation": "NOT_EXISTING_TYPE"
         }
-               \s""";
+                """;
 
         // When
         MvcResult result = createJsonMvcResult(
