@@ -1,14 +1,8 @@
 package com.github.ipantazi.carsharing.config;
 
-import static com.github.ipantazi.carsharing.util.TestDataUtil.FIXED_INSTANT;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.ZONE;
-
-import java.time.Clock;
+import org.junit.jupiter.api.TestInstance;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -16,28 +10,22 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 
-@ActiveProfiles("concurrency-test")
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@Import(BaseConcurrencyIntegrationTest.FixedClockTestConfig.class)
-public abstract class BaseConcurrencyIntegrationTest {
+public abstract class BaseIntegrationTest {
+
     @Container
     protected static final MySQLContainer<?> MYSQL =
             MySqlTestContainerFactory.getInstance();
 
     @DynamicPropertySource
-    static void configureDatasource(DynamicPropertyRegistry registry) {
+    static void datasourceProps(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
         registry.add("spring.datasource.username", MYSQL::getUsername);
         registry.add("spring.datasource.password", MYSQL::getPassword);
     }
-
-    @TestConfiguration
-    static class FixedClockTestConfig {
-        @Bean
-        @Primary
-        public Clock fixedClock() {
-            return Clock.fixed(FIXED_INSTANT, ZONE);
-        }
-    }
 }
+

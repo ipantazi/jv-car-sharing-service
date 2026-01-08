@@ -7,3 +7,7 @@ databaseChangeLog:
       file: db/changelog/changes/06-create-rental-table.yaml
   - include:
       file: db/changelog/changes/07-create-payments-table.yaml
+  - include:
+      file: db/changelog/changes/09-fix-payments-is-deleted-type.yaml
+  - include:
+      file: db/changelog/changes/10-fix-rentals-date-type.yaml

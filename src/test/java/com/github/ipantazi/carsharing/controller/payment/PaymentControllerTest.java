@@ -38,7 +38,6 @@ import static com.github.ipantazi.carsharing.util.controller.ControllerTestUtil.
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestUtil.parseResponseToObject;
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestUtil.toJson;
 import static com.github.ipantazi.carsharing.util.controller.DatabaseTestUtil.executeSqlScript;
-import static com.github.ipantazi.carsharing.util.controller.MockMvcUtil.buildMockMvc;
 import static com.github.ipantazi.carsharing.util.controller.MvcTestHelper.createJsonMvcResult;
 import static com.github.ipantazi.carsharing.util.controller.MvcTestHelper.createMvcResult;
 import static com.github.ipantazi.carsharing.util.controller.SecurityTestUtil.authenticateTestUser;
@@ -49,6 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.ipantazi.carsharing.config.BaseIntegrationTest;
 import com.github.ipantazi.carsharing.dto.payment.PaymentRequestDto;
 import com.github.ipantazi.carsharing.dto.payment.PaymentResponseDto;
 import com.github.ipantazi.carsharing.model.Payment;
@@ -61,25 +61,23 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.web.context.WebApplicationContext;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class PaymentControllerTest {
-    protected static MockMvc mockMvc;
+public class PaymentControllerTest extends BaseIntegrationTest {
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private DataSource dataSource;
 
     @Autowired
     private ObjectMapper objectMapper;
 
     @BeforeAll
-    public static void beforeAll(@Autowired DataSource dataSource,
-                                 @Autowired WebApplicationContext applicationContext) {
-        mockMvc = buildMockMvc(applicationContext);
-
-        teardown(dataSource);
+    void beforeAll() {
+        teardown();
         executeSqlScript(
                 dataSource,
                 "database/users/insert-test-users.sql",
@@ -89,12 +87,12 @@ public class PaymentControllerTest {
     }
 
     @AfterAll
-    public static void afterAll(@Autowired DataSource dataSource) {
-        teardown(dataSource);
+     void afterAll() {
+        teardown();
     }
 
     @SneakyThrows
-    public static void teardown(DataSource dataSource) {
+     void teardown() {
         executeSqlScript(
                 dataSource,
                 "database/payments/clear-all-payments.sql",

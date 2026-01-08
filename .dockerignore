@@ -1,0 +1,8 @@
+target/*
+!target/*.jar
+.git
+.gitignore
+.idea
+*.iml
+node_modules
+logs

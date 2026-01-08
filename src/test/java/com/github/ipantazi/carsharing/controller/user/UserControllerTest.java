@@ -32,7 +32,6 @@ import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataU
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestUtil.parseResponseToObject;
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestUtil.toJson;
 import static com.github.ipantazi.carsharing.util.controller.DatabaseTestUtil.executeSqlScript;
-import static com.github.ipantazi.carsharing.util.controller.MockMvcUtil.buildMockMvc;
 import static com.github.ipantazi.carsharing.util.controller.MvcTestHelper.createJsonMvcResult;
 import static com.github.ipantazi.carsharing.util.controller.MvcTestHelper.createMvcResult;
 import static com.github.ipantazi.carsharing.util.controller.SecurityTestUtil.authenticateTestUser;
@@ -45,6 +44,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.ipantazi.carsharing.config.BaseIntegrationTest;
 import com.github.ipantazi.carsharing.dto.user.UserChangePasswordDto;
 import com.github.ipantazi.carsharing.dto.user.UserProfileUpdateDto;
 import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
@@ -60,17 +60,18 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.web.context.WebApplicationContext;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class UserControllerTest {
-    protected static MockMvc mockMvc;
+public class UserControllerTest extends BaseIntegrationTest {
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private DataSource dataSource;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -82,20 +83,18 @@ public class UserControllerTest {
     private PasswordEncoder passwordEncoder;
 
     @BeforeAll
-    static void beforeAll(@Autowired DataSource dataSource,
-                          @Autowired WebApplicationContext applicationContext) {
-        mockMvc = buildMockMvc(applicationContext);
-        teardown(dataSource);
+    void beforeAll() {
+        teardown();
         executeSqlScript(dataSource, "database/users/insert-test-users.sql");
     }
 
     @AfterAll
-    static void afterAll(@Autowired DataSource dataSource) {
-        teardown(dataSource);
+     void afterAll() {
+        teardown();
     }
 
     @SneakyThrows
-    static void teardown(DataSource dataSource) {
+    void teardown() {
         executeSqlScript(dataSource, "database/users/clear-all-users.sql");
     }
 
@@ -615,7 +614,7 @@ public class UserControllerTest {
         String oldPasswordHash = user.getPassword();
 
         //When
-        MvcResult result = createJsonMvcResult(
+        createJsonMvcResult(
                 mockMvc,
                 patch(URL_USER_ME),
                 status().isNoContent(),
@@ -649,7 +648,7 @@ public class UserControllerTest {
         String oldPasswordHash = user.getPassword();
 
         //When
-        MvcResult result = createJsonMvcResult(
+        createJsonMvcResult(
                 mockMvc,
                 patch(URL_USER_ME),
                 status().isNoContent(),

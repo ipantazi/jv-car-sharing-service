@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 10-fix-rentals-date-type
+      author: Illia Pantazi
+      changes:
+        - modifyDataType:
+            tableName: rentals
+            columnName: rental_date
+            newDataType: DATE
+        - modifyDataType:
+            tableName: rentals
+            columnName: return_date
+            newDataType: DATE
+        - modifyDataType:
+            tableName: rentals
+            columnName: actual_return_date
+            newDataType: DATE

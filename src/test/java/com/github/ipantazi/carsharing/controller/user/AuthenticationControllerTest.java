@@ -23,13 +23,13 @@ import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataU
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestDataUtil.URL_REGISTRATION;
 import static com.github.ipantazi.carsharing.util.controller.ControllerTestUtil.parseResponseToObject;
 import static com.github.ipantazi.carsharing.util.controller.DatabaseTestUtil.executeSqlScript;
-import static com.github.ipantazi.carsharing.util.controller.MockMvcUtil.buildMockMvc;
 import static com.github.ipantazi.carsharing.util.controller.MvcTestHelper.createJsonMvcResult;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.ipantazi.carsharing.config.BaseIntegrationTest;
 import com.github.ipantazi.carsharing.dto.user.UserLoginRequestDto;
 import com.github.ipantazi.carsharing.dto.user.UserLoginResponseDto;
 import com.github.ipantazi.carsharing.dto.user.UserRegistrationRequestDto;
@@ -42,34 +42,33 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.web.context.WebApplicationContext;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class AuthenticationControllerTest {
-    protected static MockMvc mockMvc;
+public class AuthenticationControllerTest extends BaseIntegrationTest {
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private DataSource dataSource;
 
     @Autowired
     private ObjectMapper objectMapper;
 
     @BeforeAll
-    static void beforeAll(@Autowired DataSource dataSource,
-                          @Autowired WebApplicationContext webApplicationContext) {
-        mockMvc = buildMockMvc(webApplicationContext);
-        teardown(dataSource);
+    void beforeAll() {
+        teardown();
         executeSqlScript(dataSource, "database/users/insert-test-users.sql");
     }
 
     @AfterAll
-    static void afterAll(@Autowired DataSource dataSource) {
-        teardown(dataSource);
+    void afterAll() {
+        teardown();
     }
 
     @SneakyThrows
-    static void teardown(DataSource dataSource) {
+    void teardown() {
         executeSqlScript(dataSource, "database/users/clear-all-users.sql");
     }
 
