@@ -12,6 +12,15 @@ jobs:
       STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      MYSQLDB_ROOT_PASSWORD: ${{ secrets.MYSQLDB_ROOT_PASSWORD }}
+      MYSQLDB_USER: ${{ secrets.MYSQLDB_USER }}
+      MYSQLDB_PASSWORD: ${{ secrets.MYSQLDB_PASSWORD }}
+      MYSQLDB_HOST: localhost
+      MYSQLDB_DATABASE: car_sharing_service
+      MYSQLDB_LOCAL_PORT: 3307
+      MYSQLDB_DOCKER_PORT: 3306
+
       TEST_DB_IMAGE: mysql:8.0.36
       TEST_DB_NAME: testdb
       TEST_DB_USER: test
