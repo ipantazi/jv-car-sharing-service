@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 09-fix-payments-is-deleted-type
+      author: Illia Pantazi
+      changes:
+        - modifyDataType:
+            tableName: payments
+            columnName: is_deleted
+            newDataType: bit
+        - addDefaultValue:
+            tableName: payments
+            columnName: is_deleted
+            defaultValueBoolean: false
