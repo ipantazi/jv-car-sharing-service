@@ -1,4 +1,4 @@
-name: Java CI
+name: Java CI for jv-car-sharing-service
 
 on: [push, pull_request]
 
