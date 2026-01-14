@@ -10,7 +10,7 @@ public class MySqlTestContainerFactory {
 
     static {
         CONTAINER = new MySQLContainer<>(
-                System.getenv().getOrDefault("TEST_DB_IMAGE", "mysql:8.0.36")
+                System.getenv().getOrDefault("TEST_DB_IMAGE", "mysql:8.0.43")
         )
                 .withDatabaseName(getEnv("TEST_DB_NAME", "testdb"))
                 .withUsername(getEnv("TEST_DB_USER", "test"))
