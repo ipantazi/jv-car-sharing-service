@@ -17,15 +17,15 @@ RDS (database), and ECR (Docker image repository). It also outlines CI/CD basics
 
 ### Build and Tag the Image
 
-    docker build -t bookstore-api .
-    docker tag bookstore-api:latest YOUR_AWS_ID.dkr.ecr.eu-north-1.amazonaws.com/bookstore-api:v01
+    docker build -t carsharing-api .
+    docker tag carsharing-api:latest YOUR_AWS_ID.dkr.ecr.eu-north-1.amazonaws.com/bookstore-api:v01
 
 ### Authenticate and Push to ECR
 
     aws ecr get-login-password --region eu-north-1 | \
     docker login --username AWS --password-stdin YOUR_AWS_ID.dkr.ecr.eu-north-1.amazonaws.com
 
-    docker push YOUR_AWS_ID.dkr.ecr.eu-north-1.amazonaws.com/bookstore-api:v01
+    docker push YOUR_AWS_ID.dkr.ecr.eu-north-1.amazonaws.com/carsharing-api:v01
 
 Replace `YOUR_AWS_ID` with your actual AWS account ID (12-digit number).
 
@@ -60,7 +60,7 @@ You may need to logout/login or run `newgrp docker` for permissions to apply.
 
 2. Select MySQL, Free Tier
 
-3. Set DB name: `online_book_store`
+3. Set DB name: `car_sharing_service`
 
 4. Create user: `admin`, password: `YOUR_PASSWORD`
 
@@ -68,19 +68,70 @@ You may need to logout/login or run `newgrp docker` for permissions to apply.
 
 6. Ensure EC2 and RDS are in the same VPC
 
-## 🚀 4. Run App on EC2
+## 🔐 4. Environment Variables on EC2 (app.env)
 
-    docker pull YOUR_AWS_ID.dkr.ecr.eu-north-1.amazonaws.com/bookstore-api:v01
+For security and flexibility, sensitive configuration (database credentials, **JWT secret**, **Stripe keys**, etc.) must not 
+be hardcoded into the **Docker image** or committed to the repository.
+On **AWS EC2**, this is handled using an environment file (`app.env`), which is functionally similar to **GitHub Actions
+secrets**.
 
-    docker run --name bookstore-api -d -p 80:8080 \
-    -e SPRING_DATASOURCE_URL=jdbc:mysql://<RDS-ENDPOINT>:3306/online_book_store \
-    -e SPRING_DATASOURCE_USERNAME=admin \
-    -e SPRING_DATASOURCE_PASSWORD=YOUR_PASSWORD \
-    YOUR_AWS_ID.dkr.ecr.eu-north-1.amazonaws.com/bookstore-api:v01
+### 4.1 Create `app.env` on EC2
 
-Replace `<RDS-ENDPOINT>` with the hostname shown in the RDS dashboard (e.g., `mydb.xxxxx.eu-north-1.rds.amazonaws.com`).
+After connecting to the **EC2 instance** via SSH:
+```bash
+cd /home/ec2-user
+nano app.env
+```
 
-## 🌐 5. Access the Application
+Add the required environment variables:
+```bash
+# Database (Amazon RDS)
+MYSQLDB_USER=admin
+MYSQLDB_PASSWORD=YOUR_RDS_PASSWORD
+MYSQLDB_DATABASE=car_sharing_service
+
+# Security
+JWT_SECRET=your_jwt_secret_here
+
+# Stripe
+STRIPE_SECRET_KEY=sk_test_****
+STRIPE_WEBHOOK_SECRET=whsec_****
+
+# Telegram
+TELEGRAM_BOT_TOKEN=****
+TELEGRAM_CHAT_ID=****
+```
+### 4.2 Secure the file
+
+Restrict access so only the **EC2 user** can read it:
+
+```bash
+chmod 600 /home/ec2-user/app.env
+```
+
+This prevents accidental exposure of secrets.
+
+## 🚀 5. Run the application using app.env
+
+Pull the image from **ECR**:
+
+```bash
+docker pull YOUR_AWS_ID.dkr.ecr.eu-north-1.amazonaws.com/carsharing-api:v01
+```
+
+Run the container with environment variables loaded from `app.env`:
+
+```bash
+docker run -d --name carsharing-api \
+--env-file /home/ec2-user/app.env \
+-p 80:8080 \
+YOUR_AWS_ID.dkr.ecr.eu-north-1.amazonaws.com/carsharing-api:v01
+```
+
+Docker will automatically inject all variables from `app.env` into the container, and **Spring Boot** will resolve them 
+via `${VAR_NAME}`.
+
+## 🌐 6. Access the Application
 
 Open in browser:
 
