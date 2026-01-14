@@ -9,7 +9,7 @@ of a city car-sharing business.
 
 The system replaces manual, paper-based processes with **a web-based RESTful API** that enables administrators and customers
 to manage cars, rentals, users, and payments efficiently. It provides real-time car availability tracking,
-secure user authentication, online payments via Stripe, and automated notifications via Telegram.
+secure user authentication, online payments via Stripe, and automated notifications via **Telegram**.
 
 This project was developed as **a learning-focused backend system**, emphasizing clean architecture, security, integrations
 with third-party services, and production-ready practices such as CI, containerization, and database migrations.
@@ -246,22 +246,67 @@ cd jv-car-sharing-service
 
 ### 2. Configure
 
-Copy .env.template → .env and adjust your DB credentials (MySQL by default).
+Copy `.env.template` → `.env` and adjust your DB credentials (**MySQL** by default).
 
-### 3. Run with Docker
+#### CI Configuration (GitHub Actions)
+
+This project’s **GitHub Actions** workflow requires several environment variables
+(***MySQL credentials, Stripe keys, Telegram tokens***) to be defined as repository secrets.
+
+These values are **not stored in the repository** for security reasons.
+If the secrets are missing, the **CI pipeline** will fail during application startup or test execution.
+
+### 3. 💳 Stripe Payments & Webhooks
+
+This project integrates **Stripe Checkout** with reliable payment confirmation via **Stripe Webhooks**.
+
+- Local development uses **ngrok** to expose the webhook endpoint
+- Production deployment uses a public **AWS URL**
+- Webhook events are validated using Stripe’s **signing secret**
+- Payments are finalized only after receiving `checkout.session.completed`
+
+📘 **Detailed setup guide:**  
+👉 [Stripe Integration & Webhook Configuration](docs/STRIPE_INTEGRATION.md)
+
+### 4. 📬 Telegram Notifications
+
+The application sends operational notifications (rentals, payments, status changes) via **Telegram Bot API**.
+
+- Notifications are sent using a dedicated Telegram bot
+- Message delivery is **rate-limited with Resilience4j** to prevent Telegram API blocking
+- Configuration is fully externalized via environment variables
+
+📄 Detailed setup instructions (bot creation, chat ID, permissions, rate limiting):
+👉 [Telegram Notifications Configuration](docs/TELEGRAM_NOTIFICATIONS.md)
+
+### 5. Run with Docker
 ```bash
 docker compose up --build
 ```
 MySQL will start automatically. MySQL is used as the primary database in both the application and the integration tests.
 
-### 4. Browse the API
+### 6. Browse the API
+
+#### ⚠️ API Base Path
+
+The application is configured with:
+
+```properties
+server.servlet.context-path=/api
+```
+All REST endpoints and **Swagger UI** are available under the `/api` prefix.
+
+Example:
+- Cars API: `http://localhost:8080/api/cars`
+- **Swagger UI**: `http://localhost:8080/api/swagger-ui/index.html`
+
 #### Once the application is running, you can explore and test the API using *Swagger UI*:
 [http://localhost:8080/api/swagger-ui/index.html](http://localhost:8080/api/swagger-ui/index.html)
 
 This interface allows you to view available endpoints, inspect request/response structures,
 and execute calls directly from your browser.
 
-### 5. Running Tests with `.env`
+### 7. Running Tests with `.env`
 
 Some integration tests require environment variables (DB credentials, **Stripe**, **Telegram**, etc.),
 which are stored in a local `.env` file and not committed to the repository.
@@ -314,41 +359,19 @@ These tests simulate multiple concurrent users or operations to validate thread 
 
 [![codecov](https://codecov.io/github/ipantazi/jv-car-sharing-service/graph/badge.svg?token=yCsTNNFfq7)](https://codecov.io/github/ipantazi/jv-car-sharing-service)
 
-### 6. ⚙️ **Postman Collection**
+### 8. ⚙️ Postman Collection
 
-I’ve included a Postman collection in [📄 postman/JVCarSharingService.postman_collection.json](postman/JVCarSharingService.postman_collection.json).
+A ready-to-use **Postman collection** is provided with all **API endpoints**, example requests, and authorization flows.
 
-#### Import it to explore all endpoints and example requests/responses:
+- Includes authentication, users, cars, rentals, payments
+- Covers both ***CUSTOMER*** and ***MANAGER*** roles
+- All secured endpoints use **JWT authentication**
 
-***Click Import → Upload Files → Select***
+📄 Detailed usage instructions:
+👉 [Postman Collection Guide](docs/POSTMAN_COLLECTION.md)
 
-`postman/JVCarSharingService.postman_collection.json`
 
-ℹ️ Replace localhost:8080 with your deployed URL if running on a remote server.
-
-#### This collection contains:
-
-- Sample requests for authentication and authorization.
-
-- Endpoints for users, cars, rentals and payments.
-  All endpoints grouped logically by folders inside the collection.
-
-- All POST/PUT requests contain example bodies in the collection.
-
-- Both CUSTOMER and MANAGER-level requests.
-
-#### Almost all endpoints require a *JWT token*. To obtain it:
-
-##### a. 🔐 Register:
-`POST /api/auth/register`
-
-##### b. 🔑 Login:
-`POST /api/auth/login`
-
-##### c. 📋 Copy the token from the login response and add it to the *Authorization header*:
-`Authorization: Bearer <your_token>`
-
-### 7. ☁️ Deployment
+### 9. ☁️ Deployment
 You can deploy the application to AWS (EC2 + RDS + ECR) using Docker.
 
 📖 See full step-by-step instructions in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
