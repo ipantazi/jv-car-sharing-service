@@ -15,12 +15,14 @@ public class RentalSpecificationBuilder implements SpecificationBuilder<Rental> 
     @Override
     public Specification<Rental> build(Long userId, Boolean isActive) {
         Specification<Rental> spec1 = (userId != null)
-                ? specificationProviderManager.getSpecificationProvider("userId")
+                ? specificationProviderManager.getSpecificationProvider(
+                        UserIdSpecificationProvider.KEY)
                 .getSpecification(userId)
                 : null;
 
         Specification<Rental> spec2 = (isActive != null)
-                ? specificationProviderManager.getSpecificationProvider("is_active")
+                ? specificationProviderManager.getSpecificationProvider(
+                        IsActiveSpecificationProvider.KEY)
                 .getSpecification(isActive)
                 : null;
 

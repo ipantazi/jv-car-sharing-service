@@ -7,9 +7,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class UserIdSpecificationProvider implements SpecificationProvider<Rental> {
+    public static final String KEY = "userId";
+
     @Override
     public String getKey() {
-        return "userId";
+        return KEY;
     }
 
     @Override
