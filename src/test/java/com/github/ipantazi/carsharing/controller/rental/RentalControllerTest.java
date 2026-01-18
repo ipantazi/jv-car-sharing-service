@@ -683,7 +683,7 @@ public class RentalControllerTest extends BaseIntegrationTest {
         assertValidationErrorList(
                 result,
                 objectMapper,
-                List.of("Field 'user_id': Invalid user id. User id should be greater than 0"));
+                List.of("Field 'user_id': Invalid user id. User id should be a positive number"));
     }
 
     @Test
