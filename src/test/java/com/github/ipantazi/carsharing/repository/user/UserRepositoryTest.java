@@ -3,6 +3,7 @@ package com.github.ipantazi.carsharing.repository.user;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_EMAIL;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_USER_ID;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_EMAIL;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.SAFE_DELETED_USER_ID;
@@ -107,5 +108,25 @@ public class UserRepositoryTest extends BaseJpaIntegrationTest {
 
         // Then
         assertThat(actualUser).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Test existsUserByEmail() method when email doesn't exist.")
+    void existsUserByEmail_NotExistingEmail_ReturnsFalse() {
+        // When
+        boolean actual = userRepository.existsUserByEmail(NOT_EXISTING_EMAIL);
+
+        // Then
+        assertThat(actual).isFalse();
+    }
+
+    @Test
+    @DisplayName("Test existsUserByEmail() method when email exists.")
+    void existsUserByEmail_ExistingEmail_ReturnsTrue() {
+        // When
+        boolean actual = userRepository.existsUserByEmail(EXISTING_EMAIL);
+
+        // Then
+        assertThat(actual).isTrue();
     }
 }

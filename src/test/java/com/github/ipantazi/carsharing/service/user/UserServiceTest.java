@@ -18,7 +18,6 @@ import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_USER
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_HASHED_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.SAFE_DELETED_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.USER_DTO_IGNORING_FIELD;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.createCustomUserDetailsDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestChangePasswordRequestDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRental;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUpdateUserDto;
@@ -49,7 +48,6 @@ import com.github.ipantazi.carsharing.mapper.UserMapper;
 import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.repository.user.UserRepository;
-import com.github.ipantazi.carsharing.security.CustomUserDetails;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -57,7 +55,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
@@ -80,6 +77,8 @@ public class UserServiceTest {
         User user = createTestUser(expectedUserResponseDto);
         UserRegistrationRequestDto userRequestDto = createTestUserRegistrationRequestDto(
                 expectedUserResponseDto);
+
+        when(userRepository.existsUserByEmail(userRequestDto.email())).thenReturn(false);
         when(userMapper.toUserEntity(userRequestDto)).thenReturn(user);
         when(passwordEncoder.encode(userRequestDto.password())).thenReturn(user.getPassword());
         when(userRepository.save(user)).thenReturn(user);
@@ -94,6 +93,8 @@ public class UserServiceTest {
                 expectedUserResponseDto,
                 USER_DTO_IGNORING_FIELD
         );
+
+        verify(userRepository, times(1)).existsUserByEmail(userRequestDto.email());
         verify(userMapper, times(1)).toUserEntity(userRequestDto);
         verify(passwordEncoder, times(1)).encode(userRequestDto.password());
         verify(userRepository, times(1)).save(user);
@@ -105,26 +106,21 @@ public class UserServiceTest {
     @DisplayName("Verify that an exception is throw when an email already exists.")
     public void register_UserEmailAlreadyExists_ThrowsException() {
         //Given
-        UserRegistrationRequestDto userRegistrationRequestDto =
-                createTestUserRegistrationRequestDto(EXISTING_USER_ID);
-        User user = createTestUser(EXISTING_USER_ID);
         UserRegistrationRequestDto userRequestDto = createTestUserRegistrationRequestDto(
                 EXISTING_USER_ID);
-        when(userMapper.toUserEntity(userRequestDto)).thenReturn(user);
-        when(passwordEncoder.encode(userRequestDto.password())).thenReturn(user.getPassword());
-        when(userRepository.save(user)).thenThrow(
-                new DataIntegrityViolationException("duplicate email"));
+
+        when(userRepository.existsUserByEmail(userRequestDto.email())).thenReturn(true);
 
         //When
-        assertThatThrownBy(() -> userService.register(userRegistrationRequestDto))
+        assertThatThrownBy(() -> userService.register(userRequestDto))
                 .isInstanceOf(RegistrationException.class)
-                .hasMessageContaining(userRegistrationRequestDto.email());
+                .hasMessage("User with email %s already exists".formatted(userRequestDto.email()));
         //Then
 
-        verify(userMapper, times(1)).toUserEntity(userRequestDto);
-        verify(passwordEncoder, times(1)).encode(userRequestDto.password());
-        verify(userRepository, times(1)).save(any(User.class));
-        verifyNoMoreInteractions(userRepository, userMapper, passwordEncoder);
+        verify(userRepository, times(1)).existsUserByEmail(userRequestDto.email());
+        verify(userRepository, never()).save(any(User.class));
+        verifyNoMoreInteractions(userRepository);
+        verifyNoInteractions(userMapper, passwordEncoder);
     }
 
     @Test
@@ -480,13 +476,10 @@ public class UserServiceTest {
             """)
     public void resolveUserIdForAccess_NotManager_returnsUserDetailsId() {
         //Given
-        CustomUserDetails userDetails = createCustomUserDetailsDto(
-                createTestUser(EXISTING_USER_ID),
-                User.Role.CUSTOMER
-        );
+        User user = createTestUser(EXISTING_USER_ID);
 
         //When
-        Long actualUserId = userService.resolveUserIdForAccess(userDetails, NOT_EXISTING_USER_ID);
+        Long actualUserId = userService.resolveUserIdForAccess(user, NOT_EXISTING_USER_ID);
 
         //Then
         assertThat(actualUserId).isEqualTo(EXISTING_USER_ID);
@@ -500,15 +493,14 @@ public class UserServiceTest {
             """)
     public void resolveUserIdForAccess_ManagerAndExistingRequestUserId_returnsRequestUserId() {
         //Given
-        CustomUserDetails userDetails = createCustomUserDetailsDto(
-                createTestUser(EXISTING_ID_ANOTHER_USER),
-                User.Role.MANAGER
-        );
+        User user = createTestUser(EXISTING_ID_ANOTHER_USER);
+        user.setRole(User.Role.MANAGER);
+
         when(userRepository.existsSoftDeletedUserById(EXISTING_USER_ID)).thenReturn(0L);
         when(userRepository.existsById(EXISTING_USER_ID)).thenReturn(true);
 
         //When
-        Long actualUserId = userService.resolveUserIdForAccess(userDetails, EXISTING_USER_ID);
+        Long actualUserId = userService.resolveUserIdForAccess(user, EXISTING_USER_ID);
 
         //Then
         assertThat(actualUserId).isEqualTo(EXISTING_USER_ID);
@@ -524,13 +516,11 @@ public class UserServiceTest {
             """)
     public void resolveUserIdForAccess_ManagerAndNullRequestUserId_returnsNull() {
         //Given
-        CustomUserDetails userDetails = createCustomUserDetailsDto(
-                createTestUser(EXISTING_ID_ANOTHER_USER),
-                User.Role.MANAGER
-        );
+        User user = createTestUser(EXISTING_ID_ANOTHER_USER);
+        user.setRole(User.Role.MANAGER);
 
         //When
-        Long actualUserId = userService.resolveUserIdForAccess(userDetails, null);
+        Long actualUserId = userService.resolveUserIdForAccess(user, null);
 
         //Then
         assertThat(actualUserId).isNull();
@@ -544,20 +534,20 @@ public class UserServiceTest {
             """)
     public void resolveUserIdForAccess_ManagerAndNotExistingRequestUserId_ThrowsException() {
         //Given
-        CustomUserDetails userDetails = createCustomUserDetailsDto(
-                createTestUser(EXISTING_ID_ANOTHER_USER),
-                User.Role.MANAGER
-        );
+        User user = createTestUser(EXISTING_ID_ANOTHER_USER);
+        user.setRole(User.Role.MANAGER);
+
         when(userRepository.existsSoftDeletedUserById(NOT_EXISTING_USER_ID)).thenReturn(0L);
         when(userRepository.existsById(NOT_EXISTING_USER_ID)).thenReturn(false);
 
         //When & Then
         assertThatThrownBy(() -> userService.resolveUserIdForAccess(
-                userDetails,
+                user,
                 NOT_EXISTING_USER_ID
         ))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessage("Can't find user with id: " + NOT_EXISTING_USER_ID);
+
         verify(userRepository, times(1)).existsSoftDeletedUserById(NOT_EXISTING_USER_ID);
         verify(userRepository, times(1)).existsById(NOT_EXISTING_USER_ID);
         verifyNoMoreInteractions(userRepository);
@@ -570,20 +560,20 @@ public class UserServiceTest {
              """)
     public void resolveUserIdForAccess_ManagerAndSafeDeletedRequestUserId_ThrowsException() {
         //Given
-        CustomUserDetails userDetails = createCustomUserDetailsDto(
-                createTestUser(EXISTING_ID_ANOTHER_USER),
-                User.Role.MANAGER
-        );
+        User user = createTestUser(EXISTING_ID_ANOTHER_USER);
+        user.setRole(User.Role.MANAGER);
+
         when(userRepository.existsSoftDeletedUserById(SAFE_DELETED_USER_ID)).thenReturn(1L);
 
         //When & Then
         assertThatThrownBy(() -> userService.resolveUserIdForAccess(
-                userDetails,
+                user,
                 SAFE_DELETED_USER_ID
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("User with id: %d was previously deleted."
                         .formatted(SAFE_DELETED_USER_ID));
+
         verify(userRepository, times(1)).existsSoftDeletedUserById(SAFE_DELETED_USER_ID);
         verifyNoMoreInteractions(userRepository);
     }

@@ -7,7 +7,7 @@ import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
 import com.github.ipantazi.carsharing.dto.user.UserRoleUpdateDto;
 import com.github.ipantazi.carsharing.exception.RegistrationException;
 import com.github.ipantazi.carsharing.model.Rental;
-import com.github.ipantazi.carsharing.security.CustomUserDetails;
+import com.github.ipantazi.carsharing.model.User;
 
 public interface UserService {
     UserResponseDto register(UserRegistrationRequestDto requestDto)
@@ -23,7 +23,7 @@ public interface UserService {
 
     boolean validateUserExistsOrThrow(Long userId);
 
-    Long resolveUserIdForAccess(CustomUserDetails userDetails, Long requestedUserId);
+    Long resolveUserIdForAccess(User user, Long requestedUserId);
 
     boolean canAccessRental(Long userId, Rental rental);
 

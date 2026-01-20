@@ -13,9 +13,7 @@ import com.github.ipantazi.carsharing.mapper.UserMapper;
 import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.repository.user.UserRepository;
-import com.github.ipantazi.carsharing.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,14 +29,13 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponseDto register(UserRegistrationRequestDto requestDto)
             throws RegistrationException {
-        try {
-            User user = userMapper.toUserEntity(requestDto);
-            user.setPassword(passwordEncoder.encode(requestDto.password()));
-            return userMapper.toUserDto(userRepository.save(user));
-        } catch (DataIntegrityViolationException ex) {
+        if (userRepository.existsUserByEmail(requestDto.email())) {
             throw new RegistrationException(
-                    "Can't register user with this email: %s".formatted(requestDto.email()), ex);
+                    "User with email %s already exists".formatted(requestDto.email()));
         }
+        User user = userMapper.toUserEntity(requestDto);
+        user.setPassword(passwordEncoder.encode(requestDto.password()));
+        return userMapper.toUserDto(userRepository.save(user));
     }
 
     @Override
@@ -100,14 +97,14 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Long resolveUserIdForAccess(CustomUserDetails userDetails, Long requestedUserId) {
-        boolean isManager = userDetails.getRole().equals(User.Role.MANAGER);
+    public Long resolveUserIdForAccess(User user, Long requestedUserId) {
+        boolean isManager = user.getRole().equals(User.Role.MANAGER);
 
         if (isManager && requestedUserId != null) {
             validateUserExistsOrThrow(requestedUserId);
             return requestedUserId;
         } else if (!isManager) {
-            return userDetails.getId();
+            return user.getId();
         } else {
             return null;
         }

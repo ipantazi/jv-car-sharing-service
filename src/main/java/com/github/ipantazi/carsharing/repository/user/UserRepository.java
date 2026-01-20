@@ -14,6 +14,8 @@ import org.springframework.stereotype.Repository;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<UserDetails> findByEmail(String email);
 
+    Boolean existsUserByEmail(String email);
+
     @Query(value = """
     SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
     FROM users
