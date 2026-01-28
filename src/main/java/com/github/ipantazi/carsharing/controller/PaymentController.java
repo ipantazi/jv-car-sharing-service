@@ -44,11 +44,15 @@ public class PaymentController {
             Authentication authentication,
             @RequestParam(value = "user_id", required = false)
             @Positive(message = "User ID must be a positive number")
-            Long userId,
+            Long requestedUserId,
             @ParameterObject Pageable pageable
     ) {
         User user = (User) authentication.getPrincipal();
-        Long actualUserId = userService.resolveUserIdForAccess(user, userId);
+        Long actualUserId = userService.resolveUserIdForAccess(
+                user.getId(),
+                user.getRole(),
+                requestedUserId
+        ).orElse(null);
         return paymentService.getPayments(actualUserId, pageable);
     }
 
