@@ -54,9 +54,11 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional(readOnly = true)
     public Page<PaymentResponseDto> getPayments(Long userId, Pageable pageable) {
-        Page<Payment> paymentPage = (userId != null)
-                ? paymentRepository.findPaymentsByUserId(userId, pageable)
-                : paymentRepository.findAll(pageable);
+
+        Page<Payment> paymentPage = paymentRepository.findByUserIdOrAll(
+                userId,
+                pageable
+        );
 
         return paymentPage.map(paymentMapper::toPaymentResponseDto);
     }
