@@ -1,7 +1,9 @@
 package com.github.ipantazi.carsharing.repository.rental;
 
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_USER_ID;
+import static com.github.ipantazi.carsharing.util.repository.RepositoryTestDataUtil.ID_FIELD;
 import static com.github.ipantazi.carsharing.util.repository.RepositoryTestDataUtil.KEY_USER_ID;
+import static com.github.ipantazi.carsharing.util.repository.RepositoryTestDataUtil.USER_FIELD;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -33,7 +35,10 @@ public class UserIdSpecificationProviderTest {
     @Mock
     private CriteriaBuilder criteriaBuilder;
     @Mock
-    private Path<String> path;
+    private Path<Object> userPath;
+    @Mock
+    private Path<Object> path;
+
     @InjectMocks
     private UserIdSpecificationProvider provider;
 
@@ -48,7 +53,8 @@ public class UserIdSpecificationProviderTest {
     public void getSpecification_ValidParams_ReturnsCorrectSpecification() {
         // Given
         Predicate expectedPredicate = mock(Predicate.class);
-        when(root.<String>get(KEY_USER_ID)).thenReturn(path);
+        when(root.get(USER_FIELD)).thenReturn(userPath);
+        when(userPath.get(ID_FIELD)).thenReturn(path);
         when(criteriaBuilder.equal(path, EXISTING_USER_ID)).thenReturn(expectedPredicate);
 
         // When
@@ -57,11 +63,14 @@ public class UserIdSpecificationProviderTest {
         // Then
         assertThat(actualSpecification).isNotNull();
         Predicate actualPredicate = actualSpecification.toPredicate(root, query, criteriaBuilder);
+
         assertThat(actualPredicate).isNotNull();
         assertThat(actualPredicate).isEqualTo(expectedPredicate);
-        verify(root, times(1)).get(KEY_USER_ID);
+
+        verify(root).get(USER_FIELD);
+        verify(userPath).get(ID_FIELD);
         verify(criteriaBuilder, times(1)).equal(path, EXISTING_USER_ID);
-        verifyNoMoreInteractions(criteriaBuilder, root, query);
+        verifyNoMoreInteractions(criteriaBuilder, root, userPath);
     }
 
     @Test

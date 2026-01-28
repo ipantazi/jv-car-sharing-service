@@ -108,7 +108,7 @@ public class PaymentServiceTest {
                 paymentList.size()
         );
 
-        when(paymentRepository.findPaymentsByUserId(EXISTING_USER_ID, PAYMENT_PAGEABLE))
+        when(paymentRepository.findByUserIdOrAll(EXISTING_USER_ID, PAYMENT_PAGEABLE))
                 .thenReturn(paymentPage);
         when(paymentMapper.toPaymentResponseDto(payment)).thenReturn(expectedPaymentDto);
 
@@ -129,7 +129,7 @@ public class PaymentServiceTest {
         assertPageMetadataEquals(actualPaymentPage, paymentPage);
 
         verify(paymentRepository, times(1))
-                .findPaymentsByUserId(EXISTING_USER_ID, PAYMENT_PAGEABLE);
+                .findByUserIdOrAll(EXISTING_USER_ID, PAYMENT_PAGEABLE);
         verify(paymentMapper, times(1)).toPaymentResponseDto(payment);
         verifyNoMoreInteractions(paymentRepository, paymentMapper);
     }
@@ -144,7 +144,7 @@ public class PaymentServiceTest {
                 0
         );
 
-        when(paymentRepository.findPaymentsByUserId(EXISTING_ID_ANOTHER_USER, PAYMENT_PAGEABLE))
+        when(paymentRepository.findByUserIdOrAll(EXISTING_ID_ANOTHER_USER, PAYMENT_PAGEABLE))
                 .thenReturn(paymentPage);
 
         // When
@@ -158,7 +158,7 @@ public class PaymentServiceTest {
         assertThat(actualPaymentPage.getContent()).isEmpty();
 
         verify(paymentRepository, times(1))
-                .findPaymentsByUserId(EXISTING_ID_ANOTHER_USER, PAYMENT_PAGEABLE);
+                .findByUserIdOrAll(EXISTING_ID_ANOTHER_USER, PAYMENT_PAGEABLE);
         verifyNoMoreInteractions(paymentRepository);
     }
 
@@ -181,7 +181,7 @@ public class PaymentServiceTest {
                 paymentList.size()
         );
 
-        when(paymentRepository.findAll(PAYMENT_PAGEABLE))
+        when(paymentRepository.findByUserIdOrAll(null, PAYMENT_PAGEABLE))
                 .thenReturn(paymentPage);
         when(paymentMapper.toPaymentResponseDto(payment)).thenReturn(expectedPaymentDto);
 
@@ -202,7 +202,7 @@ public class PaymentServiceTest {
         assertPageMetadataEquals(actualPaymentPage, paymentPage);
 
         verify(paymentRepository, times(1))
-                .findAll(PAYMENT_PAGEABLE);
+                .findByUserIdOrAll(null, PAYMENT_PAGEABLE);
         verify(paymentMapper, times(1)).toPaymentResponseDto(payment);
         verifyNoMoreInteractions(paymentRepository, paymentMapper);
     }

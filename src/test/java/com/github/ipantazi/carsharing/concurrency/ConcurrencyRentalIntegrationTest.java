@@ -183,7 +183,7 @@ public class ConcurrencyRentalIntegrationTest extends BaseConcurrencyIntegration
         } else {
             // Rent failed
             assertThat(rentalRepository.count()).isEqualTo(1);
-            assertThat(actualInventory).isEqualTo(0);
+            assertThat(actualInventory).isEqualTo(1);
         }
     }
 

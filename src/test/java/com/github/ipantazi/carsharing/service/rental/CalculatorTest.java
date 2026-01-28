@@ -204,7 +204,7 @@ public class CalculatorTest {
         Rental rental = createTestRental(EXISTING_USER_ID, null);
         BigDecimal expected = calculator.calculateBaseRentalCost(CAR_DAILY_FEE, rental);
 
-        when(carRepository.findDailyFeeByCarId(rental.getCarId()))
+        when(carRepository.findDailyFeeByCarId(rental.getCar().getId()))
                 .thenReturn(Optional.of(CAR_DAILY_FEE));
 
         // When
@@ -212,7 +212,7 @@ public class CalculatorTest {
 
         // Then
         assertThat(actual).isEqualTo(expected);
-        verify(carRepository, times(1)).findDailyFeeByCarId(rental.getCarId());
+        verify(carRepository, times(1)).findDailyFeeByCarId(rental.getCar().getId());
         verifyNoMoreInteractions(carRepository);
     }
 
@@ -227,7 +227,7 @@ public class CalculatorTest {
         );
         BigDecimal expected = calculator.calculatePenaltyAmount(CAR_DAILY_FEE, rental);
 
-        when(carRepository.findDailyFeeByCarId(rental.getCarId()))
+        when(carRepository.findDailyFeeByCarId(rental.getCar().getId()))
                 .thenReturn(Optional.of(CAR_DAILY_FEE));
 
         // When
@@ -235,7 +235,7 @@ public class CalculatorTest {
 
         // Then
         assertThat(actual).isEqualTo(expected);
-        verify(carRepository, times(1)).findDailyFeeByCarId(rental.getCarId());
+        verify(carRepository, times(1)).findDailyFeeByCarId(rental.getCar().getId());
         verifyNoMoreInteractions(carRepository);
     }
 
@@ -246,14 +246,15 @@ public class CalculatorTest {
         Payment.Type type = Payment.Type.PAYMENT;
         Rental rental = createTestRental(EXISTING_USER_ID, null);
 
-        when(carRepository.findDailyFeeByCarId(rental.getCarId())).thenReturn(Optional.empty());
+        when(carRepository.findDailyFeeByCarId(rental.getCar().getId()))
+                .thenReturn(Optional.empty());
 
         // When & Then
         assertThatThrownBy(() -> calculator.calculateAmountToPayByType(rental, type))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Car not found");
+                .hasMessage("Unable to get daily fee by car Id: " + rental.getCar().getId());
 
-        verify(carRepository, times(1)).findDailyFeeByCarId(rental.getCarId());
+        verify(carRepository, times(1)).findDailyFeeByCarId(rental.getCar().getId());
         verifyNoMoreInteractions(carRepository);
     }
 

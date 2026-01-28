@@ -22,12 +22,13 @@ import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRentalD
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRentalDetailedDtoWithPenalty;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRentalRequestDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRentalResponseDto;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserResponseDto;
 import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.assertObjectsAreEqualIgnoringFields;
 import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.assertPageMetadataEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -42,13 +43,15 @@ import com.github.ipantazi.carsharing.dto.enums.RentalStatus;
 import com.github.ipantazi.carsharing.dto.rental.RentalDetailedDto;
 import com.github.ipantazi.carsharing.dto.rental.RentalRequestDto;
 import com.github.ipantazi.carsharing.dto.rental.RentalResponseDto;
-import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
 import com.github.ipantazi.carsharing.exception.CarNotAvailableException;
 import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
 import com.github.ipantazi.carsharing.exception.InvalidRentalDatesException;
 import com.github.ipantazi.carsharing.exception.PendingPaymentsExistException;
+import com.github.ipantazi.carsharing.mapper.CarMapper;
 import com.github.ipantazi.carsharing.mapper.RentalMapper;
+import com.github.ipantazi.carsharing.model.Car;
 import com.github.ipantazi.carsharing.model.Rental;
+import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.notification.NotificationMapper;
 import com.github.ipantazi.carsharing.notification.NotificationService;
 import com.github.ipantazi.carsharing.notification.NotificationType;
@@ -65,7 +68,6 @@ import java.time.Clock;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -80,15 +82,21 @@ import org.springframework.security.access.AccessDeniedException;
 @ExtendWith(MockitoExtension.class)
 public class RentalServiceTest {
     @Mock
+    private Clock clock;
+    @Mock
     private RentalRepository rentalRepository;
     @Mock
+    private RentalSpecificationBuilder specificationBuilder;
+    @Mock
     private RentalMapper rentalMapper;
+    @Mock
+    private CarMapper carMapper;
+    @Mock
+    private UserService userService;
     @Mock
     private CarServiceImpl carService;
     @Mock
     private InventoryServiceImpl inventoryService;
-    @Mock
-    private RentalSpecificationBuilder specificationBuilder;
     @Mock
     private Specification<Rental> specification;
     @Mock
@@ -97,10 +105,6 @@ public class RentalServiceTest {
     private RentalValidator rentalValidator;
     @Mock
     private Calculator calculator;
-    @Mock
-    private Clock clock;
-    @Mock
-    private UserService userService;
     @Mock
     private NotificationService notificationService;
     @Mock
@@ -116,18 +120,24 @@ public class RentalServiceTest {
                 EXISTING_USER_ID, RENTAL_DATE);
         Rental rental = createTestRental(expectedRentalResponseDto);
         RentalRequestDto rentalRequestDto = createTestRentalRequestDto(expectedRentalResponseDto);
+        User user = rental.getUser();
         CarDto carDto = expectedRentalResponseDto.getCarDto();
+        Car car = rental.getCar();
         BigDecimal baseRentalCost = expectedRentalResponseDto.getBaseRentalCost();
-        UserResponseDto userDto = createTestUserResponseDto(expectedRentalResponseDto.getUserId());
         NewRentalPayload rentalPayload = createTestNewRentalPayload(rental);
 
         when(clock.getZone()).thenReturn(ZONE);
         when(clock.instant()).thenReturn(RENTAL_DATE.atStartOfDay(ZONE).toInstant());
-        when(rentalMapper.toRentalEntity(rentalRequestDto, EXISTING_USER_ID, RENTAL_DATE))
-                .thenReturn(rental);
-        when(carService.getById(rental.getCarId())).thenReturn(carDto);
-        when(userService.getUserDetails(expectedRentalResponseDto.getUserId())).thenReturn(userDto);
-        when(notificationMapper.toRentalPayload(rental, userDto, carDto)).thenReturn(rentalPayload);
+        when(userService.getUserById(EXISTING_USER_ID)).thenReturn(user);
+        when(carService.findCarById(rentalRequestDto.carId())).thenReturn(car);
+        when(rentalMapper.toRentalEntity(
+                user,
+                car,
+                rentalRequestDto.returnDate(),
+                RENTAL_DATE
+        )).thenReturn(rental);
+        when(notificationMapper.toRentalPayload(rental)).thenReturn(rentalPayload);
+        when(carMapper.toCarDto(car)).thenReturn(carDto);
         when(calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental))
                 .thenReturn(baseRentalCost);
         when(rentalMapper.toRentalDto(
@@ -149,6 +159,7 @@ public class RentalServiceTest {
                 expectedRentalResponseDto,
                 RENTAL_DTO_IGNORING_FIELDS
         );
+
         verify(rentalValidator, times(1))
                 .checkDatesBeforeRenting(rentalRequestDto, RENTAL_DATE);
         verify(paymentValidator, times(1)).checkForPendingPayments(EXISTING_USER_ID);
@@ -156,19 +167,21 @@ public class RentalServiceTest {
                 .lockActiveRentalsForUpdateByCarId(rentalRequestDto.carId());
         verify(inventoryService, times(1))
                 .adjustInventory(rentalRequestDto.carId(), 1, OperationType.DECREASE);
+        verify(userService, times(1)).getUserById(EXISTING_USER_ID);
+        verify(carService, times(1)).findCarById(rentalRequestDto.carId());
         verify(rentalMapper, times(1))
-                .toRentalEntity(rentalRequestDto, EXISTING_USER_ID, RENTAL_DATE);
+                .toRentalEntity(user, car, rentalRequestDto.returnDate(), RENTAL_DATE);
         verify(rentalRepository, times(1)).save(rental);
-        verify(carService, times(1)).getById(rental.getCarId());
-        verify(userService, times(1)).getUserDetails(expectedRentalResponseDto.getUserId());
-        verify(notificationMapper, times(1)).toRentalPayload(rental, userDto, carDto);
+        verify(notificationMapper, times(1)).toRentalPayload(rental);
         verify(notificationService, times(1))
                 .sendMessage(NotificationType.NEW_RENTAL_CREATED, rentalPayload);
+        verify(carMapper, times(1)).toCarDto(car);
+        verify(calculator, times(1)).calculateBaseRentalCost(carDto.getDailyFee(), rental);
         verify(rentalMapper, times(1))
                 .toRentalDto(rental, carDto, RentalStatus.ACTIVE, baseRentalCost);
-        verify(calculator, times(1)).calculateBaseRentalCost(carDto.getDailyFee(), rental);
+
         verifyNoMoreInteractions(carService, paymentValidator, rentalValidator, rentalMapper);
-        verifyNoMoreInteractions(rentalRepository, inventoryService, calculator);
+        verifyNoMoreInteractions(rentalRepository, inventoryService, calculator, carMapper);
         verifyNoMoreInteractions(userService, notificationService, notificationMapper);
     }
 
@@ -176,7 +189,7 @@ public class RentalServiceTest {
     @DisplayName("Test createRental() with invalid return date")
     public void createRental_InvalidReturnDate_ThrowsException() {
         // Given
-        RentalRequestDto rentalRequestDto = new RentalRequestDto(RETURN_DATE, EXISTING_CAR_ID);
+        RentalRequestDto rentalRequestDto = new RentalRequestDto(RENTAL_DATE, EXISTING_CAR_ID);
 
         when(clock.getZone()).thenReturn(ZONE);
         when(clock.instant()).thenReturn(RENTAL_DATE.atStartOfDay(ZONE).toInstant());
@@ -193,13 +206,13 @@ public class RentalServiceTest {
 
         verify(rentalValidator, times(1))
                 .checkDatesBeforeRenting(rentalRequestDto, RENTAL_DATE);
-        verify(rentalRepository, never()).save(any());
+        verify(rentalRepository, never()).save(any(Rental.class));
         verify(inventoryService, never())
-                .adjustInventory(rentalRequestDto.carId(), 1, OperationType.DECREASE);
+                .adjustInventory(anyLong(), anyInt(), any(OperationType.class));
 
         verifyNoMoreInteractions(rentalValidator);
         verifyNoInteractions(carService, paymentValidator, rentalMapper, rentalRepository);
-        verifyNoInteractions(inventoryService, calculator);
+        verifyNoInteractions(inventoryService, calculator, carMapper);
         verifyNoInteractions(userService, notificationService, notificationMapper);
     }
 
@@ -231,9 +244,10 @@ public class RentalServiceTest {
         verify(inventoryService, times(1))
                 .adjustInventory(rentalRequestDto.carId(), 1, OperationType.DECREASE);
         verify(rentalRepository, never()).save(any());
-        verifyNoMoreInteractions(rentalValidator, carService, paymentValidator);
+
+        verifyNoMoreInteractions(rentalValidator, paymentValidator);
         verifyNoMoreInteractions(rentalRepository, inventoryService);
-        verifyNoInteractions(rentalMapper, calculator);
+        verifyNoInteractions(rentalMapper, calculator, carService, carMapper);
         verifyNoInteractions(userService, notificationService, notificationMapper);
     }
 
@@ -255,13 +269,13 @@ public class RentalServiceTest {
 
         verify(rentalValidator, times(1)).checkDatesBeforeRenting(rentalRequestDto, RENTAL_DATE);
         verify(paymentValidator, times(1)).checkForPendingPayments(EXISTING_USER_ID);
-        verify(rentalRepository, never()).save(any());
+        verify(rentalRepository, never()).save(any(Rental.class));
         verify(inventoryService, never())
-                .adjustInventory(rentalRequestDto.carId(), 1, OperationType.DECREASE);
+                .adjustInventory(anyLong(), anyInt(), any(OperationType.class));
 
-        verifyNoMoreInteractions(rentalValidator, carService, paymentValidator);
-        verifyNoInteractions(rentalMapper, rentalRepository);
-        verifyNoInteractions(inventoryService, calculator);
+        verifyNoMoreInteractions(rentalValidator, paymentValidator);
+        verifyNoInteractions(rentalMapper, rentalRepository, carMapper);
+        verifyNoInteractions(inventoryService, calculator, carService);
         verifyNoInteractions(userService, notificationService, notificationMapper);
     }
 
@@ -276,12 +290,10 @@ public class RentalServiceTest {
         Page<Rental> rentalPage = new PageImpl<>(rentalList, RENTAL_PAGEABLE, rentalList.size());
         CarDto carDto = expectedRentalDto.getCarDto();
         BigDecimal baseRentalCost = expectedRentalDto.getBaseRentalCost();
-        List<CarDto> carDtoList = Collections.singletonList(carDto);
-        Set<Long> carIds = Collections.singleton(carDto.getId());
 
         when(specificationBuilder.build(EXISTING_USER_ID, isActive)).thenReturn(specification);
         when(rentalRepository.findAll(specification, RENTAL_PAGEABLE)).thenReturn(rentalPage);
-        when(carService.getByIds(carIds)).thenReturn(carDtoList);
+        when(carMapper.toCarDto(rental.getCar())).thenReturn(carDto);
         when(calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental))
                 .thenReturn(baseRentalCost);
         when(rentalMapper.toRentalDto(
@@ -308,14 +320,16 @@ public class RentalServiceTest {
                 RENTAL_DTO_IGNORING_FIELDS
         );
         assertPageMetadataEquals(actualRentalDtoPage, rentalPage);
+
         verify(specificationBuilder, times(1)).build(EXISTING_USER_ID, isActive);
         verify(rentalRepository, times(1)).findAll(specification, RENTAL_PAGEABLE);
-        verify(carService, times(1)).getByIds(carIds);
+        verify(carMapper, times(1)).toCarDto(rental.getCar());
         verify(calculator, times(1))
                 .calculateBaseRentalCost(carDto.getDailyFee(), rental);
         verify(rentalMapper, times(1))
                 .toRentalDto(rental, carDto, RentalStatus.ACTIVE, baseRentalCost);
-        verifyNoMoreInteractions(specificationBuilder, rentalRepository, carService);
+
+        verifyNoMoreInteractions(specificationBuilder, rentalRepository, carMapper);
         verifyNoMoreInteractions(calculator, rentalMapper);
     }
 
@@ -339,10 +353,12 @@ public class RentalServiceTest {
         // Then
         assertThat(actualRentalDtoPage).isEmpty();
         assertPageMetadataEquals(actualRentalDtoPage, rentalPage);
+
         verify(specificationBuilder, times(1)).build(EXISTING_USER_ID, isActive);
         verify(rentalRepository, times(1)).findAll(specification, RENTAL_PAGEABLE);
+
         verifyNoMoreInteractions(specificationBuilder, rentalRepository);
-        verifyNoInteractions(carService, rentalMapper);
+        verifyNoInteractions(carMapper, calculator, rentalMapper);
     }
 
     @Test
@@ -357,12 +373,10 @@ public class RentalServiceTest {
         Page<Rental> rentalPage = new PageImpl<>(rentalList, RENTAL_PAGEABLE, rentalList.size());
         CarDto carDto = expectedRentalDto.getCarDto();
         BigDecimal baseRentalCost = expectedRentalDto.getBaseRentalCost();
-        List<CarDto> carDtoList = Collections.singletonList(carDto);
-        Set<Long> carIds = Collections.singleton(carDto.getId());
 
         when(specificationBuilder.build(EXISTING_USER_ID, isActive)).thenReturn(specification);
         when(rentalRepository.findAll(specification, RENTAL_PAGEABLE)).thenReturn(rentalPage);
-        when(carService.getByIds(carIds)).thenReturn(carDtoList);
+        when(carMapper.toCarDto(rental.getCar())).thenReturn(carDto);
         when(calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental))
                 .thenReturn(baseRentalCost);
         when(rentalMapper.toRentalDto(
@@ -388,12 +402,13 @@ public class RentalServiceTest {
 
         verify(specificationBuilder, times(1)).build(EXISTING_USER_ID, isActive);
         verify(rentalRepository, times(1)).findAll(specification, RENTAL_PAGEABLE);
-        verify(carService, times(1)).getByIds(carIds);
+        verify(carMapper, times(1)).toCarDto(rental.getCar());
         verify(calculator, times(1))
                 .calculateBaseRentalCost(carDto.getDailyFee(), rental);
         verify(rentalMapper, times(1))
                 .toRentalDto(rental, carDto, expectedRentalStatus, baseRentalCost);
-        verifyNoMoreInteractions(specificationBuilder, rentalRepository, carService);
+
+        verifyNoMoreInteractions(specificationBuilder, rentalRepository, carMapper);
         verifyNoMoreInteractions(calculator, rentalMapper);
     }
 
@@ -412,12 +427,10 @@ public class RentalServiceTest {
         Page<Rental> rentalPage = new PageImpl<>(rentalList, RENTAL_PAGEABLE, rentalList.size());
         CarDto carDto = expectedRentalDto.getCarDto();
         BigDecimal baseRentalCost = expectedRentalDto.getBaseRentalCost();
-        List<CarDto> carDtoList = Collections.singletonList(carDto);
-        Set<Long> carIds = Collections.singleton(carDto.getId());
 
         when(specificationBuilder.build(EXISTING_USER_ID, isActive)).thenReturn(specification);
         when(rentalRepository.findAll(specification, RENTAL_PAGEABLE)).thenReturn(rentalPage);
-        when(carService.getByIds(carIds)).thenReturn(carDtoList);
+        when(carMapper.toCarDto(rental.getCar())).thenReturn(carDto);
         when(calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental))
                 .thenReturn(baseRentalCost);
         when(rentalMapper.toRentalDto(
@@ -443,10 +456,14 @@ public class RentalServiceTest {
 
         verify(specificationBuilder, times(1)).build(EXISTING_USER_ID, isActive);
         verify(rentalRepository, times(1)).findAll(specification, RENTAL_PAGEABLE);
-        verify(carService, times(1)).getByIds(carIds);
+        verify(carMapper, times(1)).toCarDto(rental.getCar());
+        verify(calculator, times(1))
+                .calculateBaseRentalCost(carDto.getDailyFee(), rental);
         verify(rentalMapper, times(1))
                 .toRentalDto(rental, carDto, expectedRentalStatus, baseRentalCost);
-        verifyNoMoreInteractions(specificationBuilder, rentalMapper, rentalRepository, carService);
+
+        verifyNoMoreInteractions(specificationBuilder, rentalMapper, rentalRepository);
+        verifyNoMoreInteractions(carMapper, calculator);
     }
 
     @Test
@@ -460,12 +477,10 @@ public class RentalServiceTest {
         Page<Rental> rentalPage = new PageImpl<>(rentalList, RENTAL_PAGEABLE, rentalList.size());
         CarDto carDto = expectedRentalDto.getCarDto();
         BigDecimal baseRentalCost = expectedRentalDto.getBaseRentalCost();
-        List<CarDto> carDtoList = Collections.singletonList(carDto);
-        Set<Long> carIds = Collections.singleton(carDto.getId());
 
         when(specificationBuilder.build(null, isActive)).thenReturn(specification);
         when(rentalRepository.findAll(specification, RENTAL_PAGEABLE)).thenReturn(rentalPage);
-        when(carService.getByIds(carIds)).thenReturn(carDtoList);
+        when(carMapper.toCarDto(rental.getCar())).thenReturn(carDto);
         when(calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental))
                 .thenReturn(baseRentalCost);
         when(rentalMapper.toRentalDto(
@@ -492,14 +507,16 @@ public class RentalServiceTest {
                 RENTAL_DTO_IGNORING_FIELDS
         );
         assertPageMetadataEquals(actualRentalDtoPage, rentalPage);
+
         verify(specificationBuilder, times(1)).build(null, isActive);
         verify(rentalRepository, times(1)).findAll(specification, RENTAL_PAGEABLE);
-        verify(carService, times(1)).getByIds(carIds);
+        verify(carMapper, times(1)).toCarDto(rental.getCar());
         verify(calculator, times(1))
                 .calculateBaseRentalCost(carDto.getDailyFee(), rental);
         verify(rentalMapper, times(1))
                 .toRentalDto(rental, carDto, RentalStatus.ACTIVE, baseRentalCost);
-        verifyNoMoreInteractions(specificationBuilder, rentalRepository, carService);
+
+        verifyNoMoreInteractions(specificationBuilder, rentalRepository, carMapper);
         verifyNoMoreInteractions(calculator, rentalMapper);
     }
 
@@ -508,7 +525,7 @@ public class RentalServiceTest {
             Should return dto without penalty when CUSTOMER is looking for their rental
              and actual return date is null.
             """)
-    public void getRentalById_GetRentalWithNonActualReturnDate_ReturnsRentalDetailedDto() {
+    public void getRentalBy_GetRentalWithNonActualReturnDate_ReturnsRentalDetailedDto() {
         // Given
         RentalDetailedDto expectedRentalDto = createTestRentalDetailedDto(EXISTING_USER_ID, null);
         Rental rental = createTestRental(expectedRentalDto);
@@ -520,8 +537,15 @@ public class RentalServiceTest {
         BigDecimal amountDue = expectedRentalDto.getAmountDue();
         RentalStatus status = expectedRentalDto.getStatus();
 
-        when(rentalRepository.findById(rental.getId())).thenReturn(Optional.of(rental));
-        when(userService.canAccessRental(EXISTING_USER_ID, rental)).thenReturn(true);
+        when(rentalRepository.findRentalById(rental.getId()))
+                .thenReturn(Optional.of(rental));
+        when(userService.canAccessRental(EXISTING_USER_ID, rental.getUser().getId()))
+                .thenReturn(true);
+        when(carMapper.toCarDto(rental.getCar())).thenReturn(carDto);
+        when(calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental))
+                .thenReturn(baseRentalCost);
+        when(calculator.calculateTotalAmountPaid(rental.getId()))
+                .thenReturn(expectedRentalDto.getAmountPaid());
         when(rentalMapper.toRentalDetailedDto(
                 rental,
                 carDto,
@@ -532,11 +556,6 @@ public class RentalServiceTest {
                 amountDue,
                 status
         )).thenReturn(expectedRentalDto);
-        when(carService.getById(rental.getCarId())).thenReturn(carDto);
-        when(calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental))
-                .thenReturn(baseRentalCost);
-        when(calculator.calculateTotalAmountPaid(rental.getId()))
-                .thenReturn(expectedRentalDto.getAmountPaid());
 
         // When
         RentalDetailedDto actualRentalDto = rentalService.getRental(
@@ -551,8 +570,13 @@ public class RentalServiceTest {
                 expectedRentalDto,
                 RENTAL_DTO_IGNORING_FIELDS
         );
-        verify(rentalRepository, times(1)).findById(rental.getId());
-        verify(userService, times(1)).canAccessRental(EXISTING_USER_ID, rental);
+
+        verify(rentalRepository, times(1)).findRentalById(rental.getId());
+        verify(userService, times(1)).canAccessRental(EXISTING_USER_ID, rental.getUser().getId());
+        verify(carMapper, times(1)).toCarDto(rental.getCar());
+        verify(calculator, times(1)).calculateBaseRentalCost(carDto.getDailyFee(), rental);
+        verify(calculator, never()).calculatePenaltyAmount(carDto.getDailyFee(), rental);
+        verify(calculator, times(1)).calculateTotalAmountPaid(rental.getId());
         verify(rentalMapper, times(1)).toRentalDetailedDto(
                 rental,
                 carDto,
@@ -563,12 +587,9 @@ public class RentalServiceTest {
                 amountDue,
                 status
         );
-        verify(carService, times(1)).getById(rental.getCarId());
-        verify(calculator, times(1)).calculateBaseRentalCost(carDto.getDailyFee(), rental);
-        verify(calculator, never()).calculatePenaltyAmount(carDto.getDailyFee(), rental);
-        verify(calculator, times(1)).calculateTotalAmountPaid(rental.getId());
+
         verifyNoMoreInteractions(rentalRepository, userService);
-        verifyNoMoreInteractions(calculator, carService, rentalMapper);
+        verifyNoMoreInteractions(calculator, carMapper, rentalMapper);
     }
 
     @Test
@@ -576,7 +597,7 @@ public class RentalServiceTest {
             Should return dto with penalty when CUSTOMER is looking for their rental
              and actualReturnedDate is greater than returnedDate.
             """)
-    public void getRentalById_ActualReturnedDateGreaterReturnedDate_ReturnsRentalDetailedDto() {
+    public void getRental_ActualReturnedDateGreaterReturnedDate_ReturnsRentalDetailedDto() {
         // Given
         RentalDetailedDto expectedRentalDto = createTestRentalDetailedDtoWithPenalty(
                 EXISTING_USER_ID);
@@ -589,8 +610,16 @@ public class RentalServiceTest {
         BigDecimal amountDue = expectedRentalDto.getAmountDue();
         RentalStatus status = expectedRentalDto.getStatus();
 
-        when(rentalRepository.findById(rental.getId())).thenReturn(Optional.of(rental));
-        when(userService.canAccessRental(EXISTING_USER_ID, rental)).thenReturn(true);
+        when(rentalRepository.findRentalById(rental.getId())).thenReturn(Optional.of(rental));
+        when(userService.canAccessRental(EXISTING_USER_ID, rental.getUser().getId()))
+                .thenReturn(true);
+        when(carMapper.toCarDto(rental.getCar())).thenReturn(carDto);
+        when(calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental))
+                .thenReturn(expectedRentalDto.getBaseRentalCost());
+        when(calculator.calculatePenaltyAmount(carDto.getDailyFee(), rental))
+                .thenReturn(expectedRentalDto.getPenaltyAmount());
+        when(calculator.calculateTotalAmountPaid(rental.getId()))
+                .thenReturn(expectedRentalDto.getAmountPaid());
         when(rentalMapper.toRentalDetailedDto(
                 rental,
                 carDto,
@@ -601,13 +630,6 @@ public class RentalServiceTest {
                 amountDue,
                 status
         )).thenReturn(expectedRentalDto);
-        when(carService.getById(rental.getCarId())).thenReturn(carDto);
-        when(calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental))
-                .thenReturn(expectedRentalDto.getBaseRentalCost());
-        when(calculator.calculatePenaltyAmount(carDto.getDailyFee(), rental))
-                .thenReturn(expectedRentalDto.getPenaltyAmount());
-        when(calculator.calculateTotalAmountPaid(rental.getId()))
-                .thenReturn(expectedRentalDto.getAmountPaid());
 
         // When
         RentalDetailedDto actualRentalDto = rentalService.getRental(
@@ -622,8 +644,13 @@ public class RentalServiceTest {
                 expectedRentalDto,
                 RENTAL_DTO_IGNORING_FIELDS
         );
-        verify(rentalRepository, times(1)).findById(rental.getId());
-        verify(userService, times(1)).canAccessRental(EXISTING_USER_ID, rental);
+
+        verify(rentalRepository, times(1)).findRentalById(rental.getId());
+        verify(userService, times(1)).canAccessRental(EXISTING_USER_ID, rental.getUser().getId());
+        verify(carMapper, times(1)).toCarDto(rental.getCar());
+        verify(calculator, times(1)).calculateBaseRentalCost(carDto.getDailyFee(), rental);
+        verify(calculator, times(1)).calculatePenaltyAmount(carDto.getDailyFee(), rental);
+        verify(calculator, times(1)).calculateTotalAmountPaid(rental.getId());
         verify(rentalMapper, times(1)).toRentalDetailedDto(
                 rental,
                 carDto,
@@ -634,16 +661,14 @@ public class RentalServiceTest {
                 amountDue,
                 status
         );
-        verify(carService, times(1)).getById(rental.getCarId());
-        verify(calculator, times(1)).calculateBaseRentalCost(carDto.getDailyFee(), rental);
-        verify(calculator, times(1)).calculatePenaltyAmount(carDto.getDailyFee(), rental);
-        verify(calculator, times(1)).calculateTotalAmountPaid(rental.getId());
-        verifyNoMoreInteractions(rentalValidator, calculator, carService, rentalMapper);
+
+        verifyNoMoreInteractions(rentalRepository, userService);
+        verifyNoMoreInteractions(calculator, carMapper, rentalMapper);
     }
 
     @Test
-    @DisplayName("Should return dto when MANAGER is looking for alien rental.")
-    public void getRentalById_ManagerAndAlienRental_ReturnsRentalDetailedDto() {
+    @DisplayName("Should return dto when MANAGER is looking for not the owner of the rental.")
+    public void getRental_ManagerAndNotOwnerRental_ReturnsRentalDetailedDto() {
         // Given
         RentalDetailedDto expectedRentalDto = createTestRentalDetailedDto(EXISTING_USER_ID, null);
         Rental rental = createTestRental(expectedRentalDto);
@@ -655,10 +680,14 @@ public class RentalServiceTest {
         BigDecimal amountDue = expectedRentalDto.getAmountDue();
         RentalStatus status = expectedRentalDto.getStatus();
 
-        when(rentalRepository.findById(EXISTING_RENTAL_ID))
-                .thenReturn(Optional.of(rental));
-        when(userService.canAccessRental(EXISTING_ID_ANOTHER_USER, rental))
+        when(rentalRepository.findRentalById(rental.getId())).thenReturn(Optional.of(rental));
+        when(userService.canAccessRental(EXISTING_ID_ANOTHER_USER, rental.getUser().getId()))
                 .thenReturn(Boolean.TRUE);
+        when(carMapper.toCarDto(rental.getCar())).thenReturn(carDto);
+        when(calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental))
+                .thenReturn(baseRentalCost);
+        when(calculator.calculateTotalAmountPaid(rental.getId()))
+                .thenReturn(expectedRentalDto.getAmountPaid());
         when(rentalMapper.toRentalDetailedDto(
                 rental,
                 carDto,
@@ -669,11 +698,6 @@ public class RentalServiceTest {
                 amountDue,
                 status
         )).thenReturn(expectedRentalDto);
-        when(carService.getById(rental.getCarId())).thenReturn(carDto);
-        when(calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental))
-                .thenReturn(baseRentalCost);
-        when(calculator.calculateTotalAmountPaid(rental.getId()))
-                .thenReturn(expectedRentalDto.getAmountPaid());
 
         //When
         RentalDetailedDto actualRentalDto = rentalService.getRental(EXISTING_ID_ANOTHER_USER,
@@ -686,8 +710,14 @@ public class RentalServiceTest {
                 expectedRentalDto,
                 RENTAL_DTO_IGNORING_FIELDS
         );
-        verify(rentalRepository, times(1)).findById(rental.getId());
-        verify(userService, times(1)).canAccessRental(EXISTING_ID_ANOTHER_USER, rental);
+
+        verify(rentalRepository, times(1)).findRentalById(rental.getId());
+        verify(userService, times(1))
+                .canAccessRental(EXISTING_ID_ANOTHER_USER, rental.getUser().getId());
+        verify(carMapper, times(1)).toCarDto(rental.getCar());
+        verify(calculator, times(1)).calculateBaseRentalCost(carDto.getDailyFee(), rental);
+        verify(calculator, never()).calculatePenaltyAmount(carDto.getDailyFee(), rental);
+        verify(calculator, times(1)).calculateTotalAmountPaid(rental.getId());
         verify(rentalMapper, times(1)).toRentalDetailedDto(
                 rental,
                 carDto,
@@ -698,38 +728,39 @@ public class RentalServiceTest {
                 amountDue,
                 status
         );
-        verify(carService, times(1)).getById(rental.getCarId());
-        verify(calculator, times(1)).calculateBaseRentalCost(carDto.getDailyFee(), rental);
-        verify(calculator, never()).calculatePenaltyAmount(carDto.getDailyFee(), rental);
-        verify(calculator, times(1)).calculateTotalAmountPaid(rental.getId());
+
         verifyNoMoreInteractions(rentalRepository, userService);
-        verifyNoMoreInteractions(calculator, carService, rentalMapper);
+        verifyNoMoreInteractions(calculator, carMapper, rentalMapper);
     }
 
     @Test
-    @DisplayName("Test getRentalById() method when rental is not found.")
-    public void getRentalById_NonExistsRentalId_ThrowsException() {
+    @DisplayName("Test getRental() method when rental is not found.")
+    public void getRental_NonExistsRentalId_ThrowsException() {
         // Given
-        when(rentalRepository.findById(NOT_EXISTING_RENTAL_ID)).thenReturn(Optional.empty());
+        when(rentalRepository.findRentalById(NOT_EXISTING_RENTAL_ID)).thenReturn(Optional.empty());
 
         // When & Then
         assertThatThrownBy(() -> rentalService.getRental(EXISTING_USER_ID, NOT_EXISTING_RENTAL_ID))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessage("Rental not found with id: " + NOT_EXISTING_RENTAL_ID);
-        verify(rentalRepository, times(1)).findById(NOT_EXISTING_RENTAL_ID);
+
+        verify(rentalRepository, times(1)).findRentalById(NOT_EXISTING_RENTAL_ID);
+
         verifyNoMoreInteractions(rentalRepository);
-        verifyNoInteractions(userService, calculator, carService, rentalMapper);
+        verifyNoInteractions(userService, calculator, carMapper, rentalMapper);
     }
 
     @Test
-    @DisplayName("Test getRentalById() method when CUSTOMER is looking for alien rental.")
-    public void getRentalById_CustomerAndAlienRental_ThrowsException() {
+    @DisplayName("""
+    Test getRental() method when CUSTOMER is looking for not the owner of the rental.
+            """)
+    public void getRental_CustomerAndNotOwnerRental_ThrowsException() {
         // Given
         Rental rental = createTestRental(EXISTING_ID_ANOTHER_USER, null);
 
-        when(rentalRepository.findById(EXISTING_RENTAL_ID_ANOTHER_USER))
+        when(rentalRepository.findRentalById(EXISTING_RENTAL_ID_ANOTHER_USER))
                 .thenReturn(Optional.of(rental));
-        when(userService.canAccessRental(EXISTING_USER_ID, rental))
+        when(userService.canAccessRental(EXISTING_USER_ID, rental.getUser().getId()))
                 .thenReturn(Boolean.FALSE);
 
         // When & Then
@@ -739,10 +770,12 @@ public class RentalServiceTest {
         ))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessage("You do not have permission to access this rental");
-        verify(rentalRepository, times(1)).findById(EXISTING_RENTAL_ID_ANOTHER_USER);
-        verify(userService, times(1)).canAccessRental(EXISTING_USER_ID, rental);
+
+        verify(rentalRepository, times(1)).findRentalById(EXISTING_RENTAL_ID_ANOTHER_USER);
+        verify(userService, times(1)).canAccessRental(EXISTING_USER_ID, rental.getUser().getId());
+
         verifyNoMoreInteractions(userService, rentalRepository);
-        verifyNoInteractions(calculator, carService, rentalMapper);
+        verifyNoInteractions(calculator, carMapper, rentalMapper);
     }
 
     @Test
@@ -757,8 +790,6 @@ public class RentalServiceTest {
         final BigDecimal amountPaid = expectedRentalDto.getAmountPaid();
         final BigDecimal amountDue = expectedRentalDto.getAmountDue();
         final RentalStatus status = expectedRentalDto.getStatus();
-        expectedRentalDto.setActualReturnDate(String.valueOf(FIXED_DATE));
-
         final CarDto carDto = expectedRentalDto.getCarDto();
 
         Rental rental = createTestRental(expectedRentalDto);
@@ -767,7 +798,13 @@ public class RentalServiceTest {
         when(clock.getZone()).thenReturn(ZONE);
         when(clock.instant()).thenReturn(FIXED_INSTANT);
         when(rentalRepository.lockRentalForUpdate(rental.getId())).thenReturn(Optional.of(rental));
-        when(userService.canAccessRental(EXISTING_USER_ID, rental)).thenReturn(true);
+        when(userService.canAccessRental(EXISTING_USER_ID, rental.getUser().getId()))
+                .thenReturn(true);
+        when(carMapper.toCarDto(rental.getCar())).thenReturn(carDto);
+        when(calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental))
+                .thenReturn(expectedRentalDto.getBaseRentalCost());
+        when(calculator.calculateTotalAmountPaid(rental.getId()))
+                .thenReturn(expectedRentalDto.getAmountPaid());
         when(rentalMapper.toRentalDetailedDto(
                 rental,
                 carDto,
@@ -778,11 +815,6 @@ public class RentalServiceTest {
                 amountDue,
                 status
         )).thenReturn(expectedRentalDto);
-        when(carService.getById(rental.getCarId())).thenReturn(carDto);
-        when(calculator.calculateBaseRentalCost(carDto.getDailyFee(), rental))
-                .thenReturn(expectedRentalDto.getBaseRentalCost());
-        when(calculator.calculateTotalAmountPaid(rental.getId()))
-                .thenReturn(expectedRentalDto.getAmountPaid());
 
         // When
         RentalDetailedDto actualRentalDto = rentalService.returnRental(
@@ -799,10 +831,14 @@ public class RentalServiceTest {
         );
 
         verify(rentalRepository, times(1)).lockRentalForUpdate(rental.getId());
-        verify(userService, times(1)).canAccessRental(EXISTING_USER_ID, rental);
+        verify(userService, times(1)).canAccessRental(EXISTING_USER_ID, rental.getUser().getId());
         verify(rentalRepository, times(1)).save(rental);
         verify(inventoryService, times(1))
-                .adjustInventory(rental.getCarId(), 1, OperationType.INCREASE);
+                .adjustInventory(rental.getCar().getId(), 1, OperationType.INCREASE);
+        verify(carMapper, times(1)).toCarDto(rental.getCar());
+        verify(calculator, times(1)).calculateBaseRentalCost(carDto.getDailyFee(), rental);
+        verify(calculator, never()).calculatePenaltyAmount(carDto.getDailyFee(), rental);
+        verify(calculator, times(1)).calculateTotalAmountPaid(rental.getId());
         verify(rentalMapper, times(1)).toRentalDetailedDto(
                 rental,
                 carDto,
@@ -813,11 +849,8 @@ public class RentalServiceTest {
                 amountDue,
                 status
         );
-        verify(carService, times(1)).getById(rental.getCarId());
-        verify(calculator, times(1)).calculateBaseRentalCost(carDto.getDailyFee(), rental);
-        verify(calculator, never()).calculatePenaltyAmount(carDto.getDailyFee(), rental);
-        verify(calculator, times(1)).calculateTotalAmountPaid(rental.getId());
-        verifyNoMoreInteractions(rentalRepository, userService, carService);
+
+        verifyNoMoreInteractions(rentalRepository, userService, carMapper);
         verifyNoMoreInteractions(rentalMapper, inventoryService, calculator);
     }
 
@@ -833,7 +866,8 @@ public class RentalServiceTest {
         when(clock.getZone()).thenReturn(ZONE);
         when(clock.instant()).thenReturn(FIXED_INSTANT);
         when(rentalRepository.lockRentalForUpdate(rental.getId())).thenReturn(Optional.of(rental));
-        when(userService.canAccessRental(EXISTING_USER_ID, rental)).thenReturn(true);
+        when(userService.canAccessRental(EXISTING_USER_ID, rental.getUser().getId()))
+                .thenReturn(true);
 
         // When & Then
         assertThatThrownBy(() -> rentalService.returnRental(
@@ -845,12 +879,68 @@ public class RentalServiceTest {
                         .formatted(rental.getId(), rental.getActualReturnDate()));
 
         verify(rentalRepository, times(1)).lockRentalForUpdate(rental.getId());
-        verify(userService, times(1)).canAccessRental(EXISTING_USER_ID, rental);
-        verify(rentalRepository, never()).save(rental);
+        verify(userService, times(1)).canAccessRental(EXISTING_USER_ID, rental.getUser().getId());
+        verify(rentalRepository, never()).save(any(Rental.class));
         verify(inventoryService, never())
-                .adjustInventory(rental.getCarId(), 1, OperationType.INCREASE);
+                .adjustInventory(anyLong(), anyInt(), any(OperationType.class));
+
         verifyNoMoreInteractions(rentalRepository, userService);
-        verifyNoInteractions(carService, rentalMapper, inventoryService);
+        verifyNoInteractions(carMapper, rentalMapper, inventoryService);
+    }
+
+    @Test
+    @DisplayName("Test returnRental() method when CUSTOMER is not the owner of the rental.")
+    public void returnRental_CustomerNotOwnerRental_ThrowsException() {
+        // Given
+        Rental rental = createTestRental(EXISTING_ID_ANOTHER_USER, null);
+
+        when(clock.getZone()).thenReturn(ZONE);
+        when(clock.instant()).thenReturn(FIXED_INSTANT);
+        when(rentalRepository.lockRentalForUpdate(rental.getId())).thenReturn(Optional.of(rental));
+        when(userService.canAccessRental(EXISTING_USER_ID, rental.getUser().getId()))
+                .thenReturn(false);
+
+        // When & Then
+        assertThatThrownBy(() -> rentalService.returnRental(
+                EXISTING_USER_ID,
+                rental.getId()
+        ))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("You do not have permission to access this rental");
+
+        verify(rentalRepository, times(1)).lockRentalForUpdate(rental.getId());
+        verify(userService, times(1)).canAccessRental(EXISTING_USER_ID, rental.getUser().getId());
+        verify(rentalRepository, never()).save(any(Rental.class));
+        verify(inventoryService, never())
+                .adjustInventory(anyLong(), anyInt(), any(OperationType.class));
+        verifyNoMoreInteractions(rentalRepository, userService);
+        verifyNoInteractions(carMapper, rentalMapper, inventoryService);
+    }
+
+    @Test
+    @DisplayName("Test returnRental() method when rental not found.")
+    public void returnRental_RentalNotFound_ThrowsException() {
+        // Given
+        when(clock.getZone()).thenReturn(ZONE);
+        when(clock.instant()).thenReturn(FIXED_INSTANT);
+        when(rentalRepository.lockRentalForUpdate(NOT_EXISTING_RENTAL_ID))
+                .thenReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> rentalService.returnRental(
+                EXISTING_USER_ID,
+                NOT_EXISTING_RENTAL_ID
+        ))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("Rental not found with id: " + NOT_EXISTING_RENTAL_ID);
+
+        verify(rentalRepository, times(1)).lockRentalForUpdate(NOT_EXISTING_RENTAL_ID);
+        verify(rentalRepository, never()).save(any(Rental.class));
+        verify(inventoryService, never())
+                .adjustInventory(anyLong(), anyInt(), any(OperationType.class));
+
+        verifyNoMoreInteractions(rentalRepository);
+        verifyNoInteractions(userService, carMapper, rentalMapper, inventoryService);
     }
 
     @Test
@@ -866,8 +956,8 @@ public class RentalServiceTest {
 
         // When
         Rental actualRental = rentalService.getRentalEntityByIdAndUserId(
-                EXISTING_RENTAL_ID,
-                EXISTING_USER_ID
+                EXISTING_USER_ID,
+                EXISTING_RENTAL_ID
         );
 
         // Then
@@ -876,37 +966,69 @@ public class RentalServiceTest {
                 expectedRental,
                 RENTAL_DTO_IGNORING_FIELDS
         );
+
         verify(rentalRepository, times(1)).findRentalByIdAndUserId(
                 EXISTING_RENTAL_ID,
                 EXISTING_USER_ID
         );
+
         verifyNoMoreInteractions(rentalRepository);
     }
 
     @Test
     @DisplayName("""
-            Test getRentalEntityByIdAndUserId() method throws exception when rental not found.
+            Test getRentalEntityByIdAndUserId() method throws exception when rental is not exists.
             """)
-    public void getRentalEntityByIdAndUserId_RentalEntityNotFound_ThrowsException() {
+    public void getRentalEntityByIdAndUserId_RentalEntityNotExists_ThrowsException() {
         // Given
         when(rentalRepository.findRentalByIdAndUserId(
-                EXISTING_RENTAL_ID,
+                NOT_EXISTING_RENTAL_ID,
                 EXISTING_USER_ID
         )).thenReturn(Optional.empty());
 
         // When & Then
         assertThatThrownBy(() -> rentalService.getRentalEntityByIdAndUserId(
-                EXISTING_RENTAL_ID,
-                EXISTING_USER_ID
+                EXISTING_USER_ID,
+                NOT_EXISTING_RENTAL_ID
         ))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessage("Rental not found with id: %d and user id: %d."
-                        .formatted(EXISTING_RENTAL_ID, EXISTING_USER_ID));
+                        .formatted(NOT_EXISTING_RENTAL_ID, EXISTING_USER_ID));
 
         verify(rentalRepository, times(1)).findRentalByIdAndUserId(
-                EXISTING_RENTAL_ID,
+                NOT_EXISTING_RENTAL_ID,
                 EXISTING_USER_ID
         );
+
+        verifyNoMoreInteractions(rentalRepository);
+    }
+
+    @Test
+    @DisplayName("""
+            Test getRentalEntityByIdAndUserId() method throws exception when user is not owner 
+            of the rental.
+            """)
+    public void getRentalEntityByIdAndUserId_UserNotOwnerRental_ThrowsException() {
+        // Given
+        when(rentalRepository.findRentalByIdAndUserId(
+                EXISTING_RENTAL_ID_ANOTHER_USER,
+                EXISTING_USER_ID
+        )).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> rentalService.getRentalEntityByIdAndUserId(
+                EXISTING_USER_ID,
+                EXISTING_RENTAL_ID_ANOTHER_USER
+        ))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("Rental not found with id: %d and user id: %d."
+                        .formatted(EXISTING_RENTAL_ID_ANOTHER_USER, EXISTING_USER_ID));
+
+        verify(rentalRepository, times(1)).findRentalByIdAndUserId(
+                EXISTING_RENTAL_ID_ANOTHER_USER,
+                EXISTING_USER_ID
+        );
+
         verifyNoMoreInteractions(rentalRepository);
     }
 }
