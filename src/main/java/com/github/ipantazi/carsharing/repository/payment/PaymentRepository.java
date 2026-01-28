@@ -24,13 +24,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     @Query("""
     SELECT p
     FROM Payment p
-    WHERE p.rentalId IN (
-        SELECT r.id
-        FROM Rental r
-        WHERE r.userId = :userId
-    )
+    JOIN Rental r ON r.id = p.rentalId
+    WHERE (:userId IS NULL OR r.user.id = :userId)
             """)
-    Page<Payment> findPaymentsByUserId(@Param("userId") Long userId, Pageable pageable);
+    Page<Payment> findByUserIdOrAll(@Param("userId") Long userId, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
