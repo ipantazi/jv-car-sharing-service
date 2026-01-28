@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class UserIdSpecificationProvider implements SpecificationProvider<Rental> {
     public static final String KEY = "userId";
+    private static final String USER_FIELD = "user";
+    private static final String ID_FIELD = "id";
 
     @Override
     public String getKey() {
@@ -18,7 +20,7 @@ public class UserIdSpecificationProvider implements SpecificationProvider<Rental
     public Specification<Rental> getSpecification(Object params) {
         if (params instanceof Long userId && userId > 0) {
             return ((root, query, criteriaBuilder) -> criteriaBuilder.equal(
-                    root.get(this.getKey()), userId
+                    root.get(USER_FIELD).get(ID_FIELD), userId
             ));
         }
         return null;
