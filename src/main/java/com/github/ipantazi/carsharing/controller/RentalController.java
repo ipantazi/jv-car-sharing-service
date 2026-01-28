@@ -58,7 +58,11 @@ public class RentalController {
                                               @Valid RentalRequestFilterDto filter,
                                               @ParameterObject Pageable pageable) {
         User user = (User) authentication.getPrincipal();
-        Long actualUserId = userService.resolveUserIdForAccess(user, filter.user_id());
+        Long actualUserId = userService.resolveUserIdForAccess(
+                user.getId(),
+                user.getRole(),
+                filter.user_id()
+        ).orElse(null);
         return rentalService.getRentalsByFilter(actualUserId, filter.is_active(), pageable);
     }
 
