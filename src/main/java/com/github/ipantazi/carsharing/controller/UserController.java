@@ -4,7 +4,7 @@ import com.github.ipantazi.carsharing.dto.user.UserChangePasswordDto;
 import com.github.ipantazi.carsharing.dto.user.UserProfileUpdateDto;
 import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
 import com.github.ipantazi.carsharing.dto.user.UserRoleUpdateDto;
-import com.github.ipantazi.carsharing.security.CustomUserDetails;
+import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.service.user.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,8 +44,8 @@ public class UserController {
             description = "Retrieve the details of the authenticated user"
     )
     public UserResponseDto getUserDetails(Authentication authentication) {
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        return userService.getUserDetails(userDetails.getId());
+        User user = (User) authentication.getPrincipal();
+        return userService.getUserDetails(user.getId());
     }
 
     @PreAuthorize("isAuthenticated()")
@@ -58,8 +58,8 @@ public class UserController {
             Authentication authentication,
             @RequestBody @Valid UserProfileUpdateDto userProfileUpdateDto
     ) {
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        return userService.updateUserProfile(userDetails.getId(), userProfileUpdateDto);
+        User user = (User) authentication.getPrincipal();
+        return userService.updateUserProfile(user.getId(), userProfileUpdateDto);
     }
 
     @PreAuthorize("isAuthenticated()")
@@ -71,7 +71,7 @@ public class UserController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void changePassword(Authentication authentication,
                                @RequestBody @Valid UserChangePasswordDto requestDto) {
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        userService.changePassword(userDetails.getId(), requestDto);
+        User user = (User) authentication.getPrincipal();
+        userService.changePassword(user.getId(), requestDto);
     }
 }

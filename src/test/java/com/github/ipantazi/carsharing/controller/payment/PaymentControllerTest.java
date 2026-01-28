@@ -599,8 +599,7 @@ public class PaymentControllerTest extends BaseIntegrationTest {
                 result,
                 objectMapper,
                 List.of(
-                        "Field 'type': Type cannot be null",
-                        "Field 'type': Type cannot be blank"
+                        "Field 'type': Type cannot be null or blank"
                 )
         );
     }
@@ -629,7 +628,7 @@ public class PaymentControllerTest extends BaseIntegrationTest {
         assertValidationErrorList(
                 result,
                 objectMapper,
-                List.of("Field 'type': Type cannot be blank")
+                List.of("Field 'type': Type cannot be null or blank")
         );
     }
 
@@ -1129,8 +1128,7 @@ public class PaymentControllerTest extends BaseIntegrationTest {
                 result,
                 objectMapper,
                 List.of(
-                        "Field 'type': Type cannot be null",
-                        "Field 'type': Type cannot be blank"
+                        "Field 'type': Type cannot be null or blank"
                 )
         );
     }
@@ -1159,7 +1157,7 @@ public class PaymentControllerTest extends BaseIntegrationTest {
         assertValidationErrorList(
                 result,
                 objectMapper,
-                List.of("Field 'type': Type cannot be blank")
+                List.of("Field 'type': Type cannot be null or blank")
         );
     }
 

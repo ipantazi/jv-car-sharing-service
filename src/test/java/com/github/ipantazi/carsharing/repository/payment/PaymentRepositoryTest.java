@@ -38,8 +38,8 @@ public class PaymentRepositoryTest extends BaseJpaIntegrationTest {
     private PaymentRepository paymentRepository;
 
     @Test
-    @DisplayName("Test findPaymentsByUserId() method exists payments by user id")
-    void findPaymentsByUserId_ExistsPaymentsByUserId_ReturnsPageOfPayments() {
+    @DisplayName("Test findByUserIdOrAll() method if payments exist by user id")
+    void findByUserIdOrAll_ExistsPaymentsByUserId_ReturnsPageOfPayments() {
         // Given
         Payment expextedPayment = createTestPayment(
                 EXISTING_PAYMENT_WITH_ID_101,
@@ -53,7 +53,7 @@ public class PaymentRepositoryTest extends BaseJpaIntegrationTest {
         );
 
         // When
-        Page<Payment> actualPaymentPage = paymentRepository.findPaymentsByUserId(
+        Page<Payment> actualPaymentPage = paymentRepository.findByUserIdOrAll(
                 EXISTING_USER_ID,
                 PAYMENT_PAGEABLE
         );
@@ -70,12 +70,12 @@ public class PaymentRepositoryTest extends BaseJpaIntegrationTest {
     }
 
     @Test
-    @DisplayName("Test findPaymentsByUserId() method not exists payments by user id")
+    @DisplayName("Test findByUserIdOrAll() method if payments doesn't exist by user id")
     @Sql(scripts = "classpath:database/payments/clear-all-payments.sql",
             executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
     @Sql(scripts = "classpath:database/payments/insert-test-payments.sql",
             executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD)
-    void findPaymentsByUserId_NotExistsPaymentsByUserId_ReturnsEmptyPage() {
+    void findByUserIdOrAll_NotExistsPaymentsByUserId_ReturnsEmptyPage() {
         // Given
         Page<Payment> expectedPaymentPage = new PageImpl<>(
                 Collections.emptyList(),
@@ -84,7 +84,7 @@ public class PaymentRepositoryTest extends BaseJpaIntegrationTest {
         );
 
         // When
-        Page<Payment> actualPaymentPage = paymentRepository.findPaymentsByUserId(
+        Page<Payment> actualPaymentPage = paymentRepository.findByUserIdOrAll(
                 EXISTING_USER_ID,
                 PAYMENT_PAGEABLE
         );
@@ -95,8 +95,8 @@ public class PaymentRepositoryTest extends BaseJpaIntegrationTest {
     }
 
     @Test
-    @DisplayName("Test findPaymentsByUserId() method with not exists user id")
-    void findPaymentsByUserId_NotExistsUserId_ReturnsLong() {
+    @DisplayName("Test findByUserIdOrAll() method with not exists user id")
+    void findByUserIdOrAll_NotExistsUserId_ReturnsEmptyPage() {
         // Given
         Page<Payment> expectedPaymentPage = new PageImpl<>(
                 Collections.emptyList(),
@@ -105,7 +105,7 @@ public class PaymentRepositoryTest extends BaseJpaIntegrationTest {
         );
 
         // When
-        Page<Payment> actualPaymentPage = paymentRepository.findPaymentsByUserId(
+        Page<Payment> actualPaymentPage = paymentRepository.findByUserIdOrAll(
                 NOT_EXISTING_USER_ID,
                 PAYMENT_PAGEABLE
         );
@@ -113,6 +113,38 @@ public class PaymentRepositoryTest extends BaseJpaIntegrationTest {
         // Then
         assertPageMetadataEquals(actualPaymentPage, expectedPaymentPage);
         assertThat(actualPaymentPage.getContent()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Test findByUserIdOrAll() method with null user id")
+    void findByUserIdOrAll_NullUserId_ReturnsPageOfAllPayments() {
+        // Given
+        Payment expectedPayment = createTestPayment(
+                EXISTING_PAYMENT_WITH_ID_101,
+                Payment.Status.PAID
+        );
+        List<Payment> paymentList = Collections.singletonList(expectedPayment);
+        Page<Payment> expectedPaymentPage = new PageImpl<>(
+                paymentList,
+                PAYMENT_PAGEABLE,
+                paymentList.size()
+        );
+
+        // When
+        Page<Payment> actualPaymentPage = paymentRepository.findByUserIdOrAll(
+                null,
+                PAYMENT_PAGEABLE
+        );
+
+        // Then
+        List<Payment> actualPaymentList = actualPaymentPage.getContent();
+        assertThat(actualPaymentList).isNotEmpty().hasSize(1);
+        assertObjectsAreEqualIgnoringFields(
+                actualPaymentList.get(0),
+                expectedPayment,
+                PAYMENT_IGNORING_FIELDS
+        );
+        assertPageMetadataEquals(actualPaymentPage, expectedPaymentPage);
     }
 
     @Test

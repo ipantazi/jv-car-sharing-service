@@ -4,7 +4,7 @@ import com.github.ipantazi.carsharing.dto.rental.RentalDetailedDto;
 import com.github.ipantazi.carsharing.dto.rental.RentalRequestDto;
 import com.github.ipantazi.carsharing.dto.rental.RentalRequestFilterDto;
 import com.github.ipantazi.carsharing.dto.rental.RentalResponseDto;
-import com.github.ipantazi.carsharing.security.CustomUserDetails;
+import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.service.rental.RentalService;
 import com.github.ipantazi.carsharing.service.user.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,7 +44,7 @@ public class RentalController {
             Authentication authentication,
             @RequestBody @Valid RentalRequestDto rentalRequestDto
     ) {
-        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
+        Long userId = ((User) authentication.getPrincipal()).getId();
         return rentalService.createRental(userId, rentalRequestDto);
     }
 
@@ -57,8 +57,12 @@ public class RentalController {
     public Page<RentalResponseDto> getRentals(Authentication authentication,
                                               @Valid RentalRequestFilterDto filter,
                                               @ParameterObject Pageable pageable) {
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        Long actualUserId = userService.resolveUserIdForAccess(userDetails, filter.user_id());
+        User user = (User) authentication.getPrincipal();
+        Long actualUserId = userService.resolveUserIdForAccess(
+                user.getId(),
+                user.getRole(),
+                filter.user_id()
+        ).orElse(null);
         return rentalService.getRentalsByFilter(actualUserId, filter.is_active(), pageable);
     }
 
@@ -71,8 +75,8 @@ public class RentalController {
 
     public RentalDetailedDto getRentalById(Authentication authentication,
                                            @PathVariable Long id) {
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        return rentalService.getRental(userDetails.getId(), id);
+        User user = (User) authentication.getPrincipal();
+        return rentalService.getRental(user.getId(), id);
     }
 
     @PreAuthorize("isAuthenticated()")
@@ -83,7 +87,7 @@ public class RentalController {
     )
     public RentalDetailedDto returnRental(Authentication authentication,
                                           @PathVariable Long id) {
-        Long userId = ((CustomUserDetails) authentication.getPrincipal()).getId();
+        Long userId = ((User) authentication.getPrincipal()).getId();
         return rentalService.returnRental(userId, id);
     }
 }

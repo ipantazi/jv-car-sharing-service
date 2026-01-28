@@ -3,7 +3,7 @@ package com.github.ipantazi.carsharing.repository.rental;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_CAR_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_RENTAL_ID;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.RENTAL_DTO_IGNORING_FIELDS;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.RENTAL_IGNORING_FIELDS;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRental;
 import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.assertObjectsAreEqualIgnoringFields;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,7 +52,7 @@ public class RentalRepositoryTest extends BaseJpaIntegrationTest {
         assertObjectsAreEqualIgnoringFields(
                 actualRentalOpt.get(),
                 expectedRental,
-                RENTAL_DTO_IGNORING_FIELDS
+                RENTAL_IGNORING_FIELDS
         );
     }
 
@@ -83,7 +83,7 @@ public class RentalRepositoryTest extends BaseJpaIntegrationTest {
         assertObjectsAreEqualIgnoringFields(
                 actualRentals.get(0),
                 expectedRental,
-                RENTAL_DTO_IGNORING_FIELDS
+                RENTAL_IGNORING_FIELDS
         );
     }
 

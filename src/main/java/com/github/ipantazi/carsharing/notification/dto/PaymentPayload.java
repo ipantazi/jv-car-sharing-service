@@ -8,7 +8,6 @@ public record PaymentPayload(
         Long rentalId,
         String email,
         BigDecimal amount,
-
         Payment.Type type
 ) {
 }

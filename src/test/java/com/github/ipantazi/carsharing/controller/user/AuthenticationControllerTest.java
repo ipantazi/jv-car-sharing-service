@@ -280,7 +280,7 @@ public class AuthenticationControllerTest extends BaseIntegrationTest {
                 result,
                 objectMapper,
                 CONFLICT,
-                "Can't register user with this email: " + userRegistrationRequestDto.email()
+                "User with email %s already exists".formatted(userRegistrationRequestDto.email())
         );
     }
 

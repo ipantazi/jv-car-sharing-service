@@ -75,7 +75,7 @@ public class CarServiceImpl implements CarService {
     }
 
     @Override
-    public List<CarDto> getByIds(Set<Long> ids) { // Test
+    public List<CarDto> getByIds(Set<Long> ids) {
         return carRepository.findAllById(ids).stream()
                 .map(carMapper::toCarDto)
                 .toList();

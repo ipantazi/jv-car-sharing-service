@@ -6,8 +6,8 @@ import com.github.ipantazi.carsharing.dto.user.UserRegistrationRequestDto;
 import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
 import com.github.ipantazi.carsharing.dto.user.UserRoleUpdateDto;
 import com.github.ipantazi.carsharing.exception.RegistrationException;
-import com.github.ipantazi.carsharing.model.Rental;
-import com.github.ipantazi.carsharing.security.CustomUserDetails;
+import com.github.ipantazi.carsharing.model.User;
+import java.util.Optional;
 
 public interface UserService {
     UserResponseDto register(UserRegistrationRequestDto requestDto)
@@ -21,11 +21,13 @@ public interface UserService {
 
     void changePassword(Long id, UserChangePasswordDto requestDto);
 
-    boolean validateUserExistsOrThrow(Long userId);
+    Optional<Long> resolveUserIdForAccess(Long authUserId,
+                                          User.Role userRole,
+                                          Long requestedUserId);
 
-    Long resolveUserIdForAccess(CustomUserDetails userDetails, Long requestedUserId);
-
-    boolean canAccessRental(Long userId, Rental rental);
+    boolean canAccessRental(Long userId, Long rentalOwnerId);
 
     String getEmailByRentalId(Long userId);
+
+    User getUserById(Long userId);
 }

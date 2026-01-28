@@ -9,8 +9,7 @@ public record PaymentRequestDto(
         @Positive(message = "Rental ID must be a positive number")
         Long rentalId,
 
-        @NotNull(message = "Type cannot be null")
-        @NotBlank(message = "Type cannot be blank")
+        @NotBlank(message = "Type cannot be null or blank")
         String type
 ) {
 }

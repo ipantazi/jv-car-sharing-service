@@ -12,6 +12,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 @Slf4j
 @Service
 public class TelegramClientImpl implements TelegramClient {
+    private static final String BASE_URL = "https://api.telegram.org";
     private final WebClient webClient;
     private final RateLimiter rateLimiter;
     private final String botToken;
@@ -32,7 +33,7 @@ public class TelegramClientImpl implements TelegramClient {
         this.botToken = botToken;
         this.chatId = chatId;
         this.rateLimiter = telegramRateLimiter;
-        this.webClient = builder.baseUrl("https://api.telegram.org").build();
+        this.webClient = builder.baseUrl(BASE_URL).build();
     }
 
     @Override
