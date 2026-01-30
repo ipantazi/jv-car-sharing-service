@@ -14,6 +14,12 @@ import org.springframework.stereotype.Repository;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<UserDetails> findByEmail(String email);
 
+    boolean existsUserByEmail(String email);
+
+    boolean existsByEmailAndIdNot(String email, Long id);
+
+    boolean existsByIdAndRole(Long id, User.Role role);
+
     @Query(value = """
     SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
     FROM users
@@ -25,7 +31,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     SELECT u.email
     FROM User u
     WHERE u.id IN (
-        SELECT r.userId
+        SELECT r.user.id
         FROM Rental r
         WHERE r.id = :rentalId
     )
@@ -34,7 +40,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM User u WHERE u.id = :id")
-    Optional<User> lockUserForUpdate(Long id); // test
-
-    boolean existsByEmailAndIdNot(String email, Long id);
+    Optional<User> lockUserForUpdate(Long id);
 }

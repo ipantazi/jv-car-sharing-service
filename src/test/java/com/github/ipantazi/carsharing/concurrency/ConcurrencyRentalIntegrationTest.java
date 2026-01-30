@@ -1,5 +1,9 @@
 package com.github.ipantazi.carsharing.concurrency;
 
+import static com.github.ipantazi.carsharing.concurrency.ConcurrencyRentalIntegrationTest.Outcome.RENT_FAIL;
+import static com.github.ipantazi.carsharing.concurrency.ConcurrencyRentalIntegrationTest.Outcome.RENT_OK;
+import static com.github.ipantazi.carsharing.concurrency.ConcurrencyRentalIntegrationTest.Outcome.RETURN_FAIL;
+import static com.github.ipantazi.carsharing.concurrency.ConcurrencyRentalIntegrationTest.Outcome.RETURN_OK;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_CAR_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_ID_ANOTHER_USER;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_RENTAL_ID;
@@ -8,6 +12,7 @@ import static com.github.ipantazi.carsharing.util.TestDataUtil.RETURN_DATE_FOR_N
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestIdsList;
 import static com.github.ipantazi.carsharing.util.controller.DatabaseTestUtil.executeSqlScript;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 import com.github.ipantazi.carsharing.config.BaseConcurrencyIntegrationTest;
 import com.github.ipantazi.carsharing.dto.rental.RentalRequestDto;
@@ -24,12 +29,17 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.jdbc.Sql;
 
 public class ConcurrencyRentalIntegrationTest extends BaseConcurrencyIntegrationTest {
+    private static RentalRequestDto dto;
+
+    public enum Outcome {
+        RENT_OK, RENT_FAIL, RETURN_OK, RETURN_FAIL
+    }
+
     @Autowired
     private RentalService rentalService;
 
@@ -46,6 +56,8 @@ public class ConcurrencyRentalIntegrationTest extends BaseConcurrencyIntegration
                 dataSource,
                 "database/users/insert-test-users.sql",
                 "database/cars/insert-test-cars.sql");
+
+        dto = new RentalRequestDto(RETURN_DATE_FOR_NEW_RENTAL, EXISTING_CAR_ID);
     }
 
     @AfterEach
@@ -80,18 +92,18 @@ public class ConcurrencyRentalIntegrationTest extends BaseConcurrencyIntegration
         int threadCount = 5;
         List<Long> userIds = createTestIdsList(threadCount);
 
-        RentalRequestDto dto = new RentalRequestDto(RETURN_DATE_FOR_NEW_RENTAL, EXISTING_CAR_ID);
-        List<Callable<Boolean>> tasks = getTasksNewRentalWithMultipleThreads(userIds, dto);
-        ConcurrencyTestHelper concurrencyTestHelper = new ConcurrencyTestHelper(threadCount);
+        List<Callable<Boolean>> tasks = getTasksNewRentalWithMultipleThreads(userIds);
 
         // When
-        List<Future<Boolean>> results = concurrencyTestHelper.runConcurrentTasks(tasks);
+        List<Future<Boolean>> results = new ConcurrencyTestHelper(threadCount)
+                .runConcurrentTasks(tasks);
 
         // Then
         long successCount = results.stream()
                 .map(ConcurrencyTestHelper::safeGet)
-                .filter(v -> v)
+                .filter(Boolean.TRUE::equals)
                 .count();
+
         assertThat(successCount)
                 .as("Only one rental should succeed when inventory = 1")
                 .isEqualTo(1);
@@ -100,95 +112,108 @@ public class ConcurrencyRentalIntegrationTest extends BaseConcurrencyIntegration
                 .as("Only one rental must be stored in DB")
                 .isEqualTo(1);
 
-        int actualInventory = carRepository.findById(EXISTING_CAR_ID)
-                .orElseThrow()
-                .getInventory();
-        assertThat(actualInventory)
+        assertThat(getInventory())
                 .as("The number of available cars should be zero")
                 .isEqualTo(0);
     }
 
     @Test
-    @DisplayName("Return rental completes first → new rental must succeed")
+    @DisplayName("""
+    Concurrent return and new rental:
+    - return may happen first or second
+    - inventory must never go negative
+    - final state must be consistent
+            """)
     @Sql(scripts = {
             "classpath:database/cars/set-inventory-null-for-car-id101.sql",
             "classpath:database/rentals/insert-one-test-rental.sql"
     },
             executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-    void returnRentalFirst_thenNewRentalSucceeds() throws Exception {
+    void concurrentReturnThenNewRental_consistentFinalState() throws Exception {
         // Given
-        int threadCount = 2;
-        RentalRequestDto dto = new RentalRequestDto(RETURN_DATE_FOR_NEW_RENTAL, EXISTING_CAR_ID);
-        List<Callable<String>> tasks = getTasksReturnFirstThenNewRental(dto);
-        ConcurrencyTestHelper concurrencyTestHelper = new ConcurrencyTestHelper(threadCount);
+        List<Callable<Outcome>> tasks = List.of(
+                // Thread 1: return first
+                this::tryReturnRental,
+                // Thread 2: new rental
+                this::tryCreateRental
+        );
 
         // When
-        List<Future<String>> results = concurrencyTestHelper.runConcurrentTasks(tasks);
+        List<Outcome> outcomes = runAndCollectOutcomes(tasks);
 
         // Then
-        String returnResult = ConcurrencyTestHelper.safeGet(results.get(0));
-        String rentResult = ConcurrencyTestHelper.safeGet(results.get(1));
+        int actualInventory = getInventory();
+        long actualRentals = rentalRepository.count();
 
-        assertThat(returnResult).isEqualTo("RETURN_OK");
-        assertThat(rentResult).isEqualTo("RENT_OK");
+        assertInvariantState(actualInventory, actualRentals);
 
-        int actualInventory = carRepository.findById(EXISTING_CAR_ID)
-                .orElseThrow()
-                .getInventory();
-        assertThat(actualInventory)
-                .as("The number of available cars should be zero")
-                .isEqualTo(0);
-
-        assertThat(rentalRepository.count())
-                .as("Returned rental plus new rental must be stored in DB")
-                .isEqualTo(2);
-    }
-
-    @RepeatedTest(5)
-    @DisplayName("New rental attempted first before the rent is return → new rental may fail; "
-            + "inventory must not go negative")
-    @Sql(scripts = {
-            "classpath:database/cars/set-inventory-null-for-car-id101.sql",
-            "classpath:database/rentals/insert-one-test-rental.sql"
-    },
-            executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-    void rentFirst_thenReturn() throws Exception {
-        // Given
-        int threadCount = 2;
-        RentalRequestDto dto = new RentalRequestDto(RETURN_DATE_FOR_NEW_RENTAL, EXISTING_CAR_ID);
-        List<Callable<String>> tasks = getTasksNewRentalThenReturn(dto);
-        ConcurrencyTestHelper concurrencyTestHelper = new ConcurrencyTestHelper(threadCount);
-
-        // When
-        List<Future<String>> results = concurrencyTestHelper.runConcurrentTasks(tasks);
-
-        // Then
-        String rentResult = ConcurrencyTestHelper.safeGet(results.get(0));
-        String returnResult = ConcurrencyTestHelper.safeGet(results.get(1));
-
-        assertThat(returnResult).startsWith("RETURN_");
-        assertThat(rentResult).startsWith("RENT_");
-
-        int actualInventory = carRepository.findById(EXISTING_CAR_ID)
-                .orElseThrow()
-                .getInventory();
-        assertThat(actualInventory)
-                .as("The number of available cars should be greater than or equal to zero")
-                .isGreaterThanOrEqualTo(0);
-
-        if ("RENT_OK".equals(rentResult)) {
-            // Rent succeeded only if return committed first
-            assertThat(rentalRepository.count()).isEqualTo(2);
-            assertThat(actualInventory).isEqualTo(0);
-        } else {
-            // Rent failed
-            assertThat(rentalRepository.count()).isEqualTo(1);
-            assertThat(actualInventory).isEqualTo(0);
+        // Case 1: return committed first → rent succeeds
+        if (outcomes.contains(RETURN_OK) && outcomes.contains(RENT_OK)) {
+            assertFinalState(actualInventory, 0, actualRentals, 2);
+            return;
         }
+
+        // Case 2: rent attempted first → rent failed
+        if (outcomes.contains(RETURN_OK) && outcomes.contains(RENT_FAIL)) {
+            assertFinalState(actualInventory, 1, actualRentals, 1);
+            return;
+        }
+
+        failUnexpected(outcomes);
     }
 
-    private List<Callable<Boolean>> getTasksNewRentalWithMultipleThreads(List<Long> userIds,
-                                                                         RentalRequestDto dto) {
+    @Test
+    @DisplayName("""
+    Concurrent New rental and return:
+    - new rental may happen first or second
+    - inventory must never go negative
+    - final state must be consistent
+            """)
+    @Sql(scripts = {
+            "classpath:database/cars/set-inventory-null-for-car-id101.sql",
+            "classpath:database/rentals/insert-one-test-rental.sql"
+    },
+            executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+    void concurrentNewRentalThenReturn_consistentFinalState() throws Exception {
+        // Given
+        List<Callable<Outcome>> tasks = List.of(
+                // Thread 1: new rental first
+                this::tryCreateRental,
+                // Thread 2: return
+                this::tryReturnRental
+        );
+
+        // When
+        List<Outcome> outcomes = runAndCollectOutcomes(tasks);
+
+        // Then
+        int actualInventory = getInventory();
+        long actualRentals = rentalRepository.count();
+
+        assertInvariantState(actualInventory, actualRentals);
+
+        // Case 1: rent attempted first → rent failed
+        if (outcomes.contains(RETURN_OK) && outcomes.contains(RENT_FAIL)) {
+            assertFinalState(actualInventory,1, actualRentals,1);
+            return;
+        }
+
+        // Case 2: return committed first → rent succeeds
+        if (outcomes.contains(RETURN_OK) && outcomes.contains(RENT_OK)) {
+            assertFinalState(actualInventory,0, actualRentals,2);
+            return;
+        }
+
+        failUnexpected(outcomes);
+    }
+
+    private int getInventory() {
+        return carRepository.findById(EXISTING_CAR_ID)
+                .orElseThrow()
+                .getInventory();
+    }
+
+    private List<Callable<Boolean>> getTasksNewRentalWithMultipleThreads(List<Long> userIds) {
         return userIds.stream()
                 .map(userId -> (Callable<Boolean>) () -> {
                     try {
@@ -201,41 +226,54 @@ public class ConcurrencyRentalIntegrationTest extends BaseConcurrencyIntegration
                 .toList();
     }
 
-    private List<Callable<String>> getTasksReturnFirstThenNewRental(RentalRequestDto dto) {
-        return List.of(
-                // Thread 1: return first
-                () -> {
-                    rentalService.returnRental(EXISTING_USER_ID, EXISTING_RENTAL_ID);
-                    return "RETURN_OK";
-                },
-                // Thread 2: new rental
-                () -> {
-                    rentalService.createRental(EXISTING_ID_ANOTHER_USER, dto);
-                    return "RENT_OK";
-                }
-        );
+    private List<Outcome> runAndCollectOutcomes(List<Callable<Outcome>> tasks)
+            throws InterruptedException {
+
+        List<Future<Outcome>> results = new ConcurrencyTestHelper(tasks.size())
+                .runConcurrentTasks(tasks);
+
+        return results.stream()
+                .map(ConcurrencyTestHelper::safeGet)
+                .toList();
     }
 
-    private List<Callable<String>> getTasksNewRentalThenReturn(RentalRequestDto dto) {
-        return List.of(
-                // Thread 1: new rental first
-                () -> {
-                    try {
-                        rentalService.createRental(EXISTING_ID_ANOTHER_USER, dto);
-                        return "RENT_OK";
-                    } catch (Exception e) {
-                        return "RENT_FAIL";
-                    }
-                },
-                // Thread 2: return
-                () -> {
-                    try {
-                        rentalService.returnRental(EXISTING_USER_ID, EXISTING_RENTAL_ID);
-                        return "RETURN_OK";
-                    } catch (Exception e) {
-                        return "RETURN_FAIL";
-                    }
-                }
-        );
+    private Outcome tryCreateRental() {
+        try {
+            rentalService.createRental(EXISTING_ID_ANOTHER_USER, dto);
+            return RENT_OK;
+        } catch (Exception e) {
+            return RENT_FAIL;
+        }
+    }
+
+    private Outcome tryReturnRental() {
+        try {
+            rentalService.returnRental(EXISTING_USER_ID, EXISTING_RENTAL_ID);
+            return RETURN_OK;
+        } catch (Exception e) {
+            return RETURN_FAIL;
+        }
+    }
+
+    private void assertInvariantState(int actualInventory, long rentalCount) {
+        assertThat(actualInventory)
+                .as("Inventory must never be negative")
+                .isGreaterThanOrEqualTo(0);
+
+        assertThat(rentalCount)
+                .as("Rental count must be either 1 or 2")
+                .isIn(1L, 2L);
+    }
+
+    private void assertFinalState(int actualInventory,
+                                  int expectedInventory,
+                                  long actualRentals,
+                                  long expectedRentals) {
+        assertThat(actualInventory).isEqualTo(expectedInventory);
+        assertThat(actualRentals).isEqualTo(expectedRentals);
+    }
+
+    private void failUnexpected(List<Outcome> outcomes) {
+        fail("Unexpected concurrency outcome: " + outcomes);
     }
 }

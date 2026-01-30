@@ -9,11 +9,11 @@ import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_EMAIL;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_NOT_HASHED_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_NOT_HASHED_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_USER_ID;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_HASHED_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.TEST_LONG_DATA;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.USER_DTO_IGNORING_FIELD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestChangePasswordRequestDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUpdateUserDto;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUser;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserResponseDto;
 import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.assertObjectsAreEqualIgnoringFields;
 import static com.github.ipantazi.carsharing.util.assertions.TestAssertionsUtil.assertValidationError;
@@ -35,8 +35,6 @@ import static com.github.ipantazi.carsharing.util.controller.DatabaseTestUtil.ex
 import static com.github.ipantazi.carsharing.util.controller.MvcTestHelper.createJsonMvcResult;
 import static com.github.ipantazi.carsharing.util.controller.MvcTestHelper.createMvcResult;
 import static com.github.ipantazi.carsharing.util.controller.SecurityTestUtil.authenticateTestUser;
-import static com.github.ipantazi.carsharing.util.controller.SecurityTestUtil.setAuthenticationForUser;
-import static com.github.ipantazi.carsharing.util.controller.SecurityTestUtil.wrapAsUserDetails;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -51,7 +49,6 @@ import com.github.ipantazi.carsharing.dto.user.UserResponseDto;
 import com.github.ipantazi.carsharing.dto.user.UserRoleUpdateDto;
 import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.repository.user.UserRepository;
-import com.github.ipantazi.carsharing.security.CustomUserDetails;
 import java.util.List;
 import javax.sql.DataSource;
 import lombok.SneakyThrows;
@@ -284,13 +281,12 @@ public class UserControllerTest extends BaseIntegrationTest {
     void getUserDetails_ValidUserId_AuthorizedManager_ShouldReturnUserResponseDto()
             throws Exception {
         // Given
+        authenticateTestUser(EXISTING_ID_ANOTHER_USER, User.Role.MANAGER);
+
         UserResponseDto expectedUserResponseDto = createTestUserResponseDto(
                 EXISTING_ID_ANOTHER_USER,
                 User.Role.MANAGER
         );
-        User user = createTestUser(expectedUserResponseDto);
-        CustomUserDetails customUserDetails = wrapAsUserDetails(user);
-        setAuthenticationForUser(customUserDetails);
 
         // When
         MvcResult result = createMvcResult(
@@ -317,12 +313,11 @@ public class UserControllerTest extends BaseIntegrationTest {
     void getUserDetails_ValidUserId_AuthorizedCustomer_ShouldReturnUserResponseDto()
             throws Exception {
         // Given
+        authenticateTestUser(EXISTING_USER_ID, User.Role.CUSTOMER);
+
         UserResponseDto expectedUserResponseDto = createTestUserResponseDto(
                 EXISTING_USER_ID,
                 User.Role.CUSTOMER);
-        User user = createTestUser(expectedUserResponseDto);
-        CustomUserDetails customUserDetails = wrapAsUserDetails(user);
-        setAuthenticationForUser(customUserDetails);
 
         // When
         MvcResult result = createMvcResult(
@@ -471,11 +466,9 @@ public class UserControllerTest extends BaseIntegrationTest {
     )
     void updateUserProfile_UnchangedEmail_ShouldReturnUserResponseDto() throws Exception {
         //Given
-        User user = createTestUser(EXISTING_USER_ID);
-        CustomUserDetails customUserDetails = wrapAsUserDetails(user);
-        setAuthenticationForUser(customUserDetails);
+        authenticateTestUser(EXISTING_USER_ID, User.Role.CUSTOMER);
 
-        String currentEmail = user.getEmail();
+        String currentEmail = EXISTING_USER_ID + EMAIL_DOMAIN;
         UserResponseDto expectedUserResponseDto = new UserResponseDto(
                 EXISTING_USER_ID,
                 currentEmail,
@@ -605,13 +598,11 @@ public class UserControllerTest extends BaseIntegrationTest {
     )
     void changePassword_CustomerRole_Success() throws Exception {
         //Given
-        User user = createTestUser(EXISTING_USER_ID);
-        CustomUserDetails customUserDetails = wrapAsUserDetails(user);
-        setAuthenticationForUser(customUserDetails);
+        authenticateTestUser(EXISTING_USER_ID, User.Role.CUSTOMER);
 
         UserChangePasswordDto userChangePasswordDto = createTestChangePasswordRequestDto();
         String jsonRequest = toJson(objectMapper, userChangePasswordDto);
-        String oldPasswordHash = user.getPassword();
+        String oldPasswordHash = userChangePasswordDto.oldPassword();
 
         //When
         createJsonMvcResult(
@@ -638,14 +629,11 @@ public class UserControllerTest extends BaseIntegrationTest {
     )
     void changePassword_ManagerRole_Success() throws Exception {
         //Given
-        User user = createTestUser(EXISTING_ID_ANOTHER_USER);
-        user.setRole(User.Role.MANAGER);
-        CustomUserDetails customUserDetails = wrapAsUserDetails(user);
-        setAuthenticationForUser(customUserDetails);
+        authenticateTestUser(EXISTING_ID_ANOTHER_USER, User.Role.MANAGER);
 
         UserChangePasswordDto userChangePasswordDto = createTestChangePasswordRequestDto();
         String jsonRequest = toJson(objectMapper, userChangePasswordDto);
-        String oldPasswordHash = user.getPassword();
+        String oldPasswordHash = userChangePasswordDto.oldPassword();
 
         //When
         createJsonMvcResult(
@@ -716,12 +704,10 @@ public class UserControllerTest extends BaseIntegrationTest {
     @DisplayName("Test change password with invalid format password")
     void changePassword_InvalidFormatPassword_ShouldReturnBadRequest() throws Exception {
         //Given
-        User user = createTestUser(EXISTING_USER_ID);
-        CustomUserDetails customUserDetails = wrapAsUserDetails(user);
-        setAuthenticationForUser(customUserDetails);
+        authenticateTestUser(EXISTING_USER_ID, User.Role.CUSTOMER);
 
         UserChangePasswordDto userChangePasswordDto = new UserChangePasswordDto(
-                user.getPassword(),
+                NOT_HASHED_PASSWORD,
                 TEST_LONG_DATA,
                 TEST_LONG_DATA
         );
@@ -777,12 +763,10 @@ public class UserControllerTest extends BaseIntegrationTest {
     @DisplayName("Test change password when do not match new passwords")
     void changePassword_NewPasswordsNotMatch_ShouldReturnBadRequest() throws Exception {
         //Given
-        User user = createTestUser(EXISTING_USER_ID);
-        CustomUserDetails customUserDetails = wrapAsUserDetails(user);
-        setAuthenticationForUser(customUserDetails);
+        authenticateTestUser(EXISTING_USER_ID, User.Role.CUSTOMER);
 
         UserChangePasswordDto userChangePasswordDto = new UserChangePasswordDto(
-                user.getPassword(),
+                NOT_HASHED_PASSWORD,
                 NEW_NOT_HASHED_PASSWORD,
                 ""
         );

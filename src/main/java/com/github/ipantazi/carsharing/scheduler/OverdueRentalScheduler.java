@@ -12,7 +12,6 @@ import org.springframework.stereotype.Component;
 public class OverdueRentalScheduler {
     private final OverdueRentalChecker checker;
 
-    // @Scheduled(cron = "0 */2 * * * *") // every minute for testing
     @Scheduled(cron = "0 0 9 * * *")
     public void run() {
         checker.checkOverdueRental();

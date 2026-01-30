@@ -1,12 +1,12 @@
 package com.github.ipantazi.carsharing.service.user;
 
-import static com.github.ipantazi.carsharing.util.TestDataUtil.ACTUAL_RETURN_DATE;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.B_CRYPT_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EMAIL_DOMAIN;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_EMAIL;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_ID_ANOTHER_USER;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_RENTAL_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.EXISTING_USER_ID;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.FALSE_STATUS_FOR_SOFT_DELETED_USER;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.FIRST_NAME;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.LAST_NAME;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NEW_EMAIL;
@@ -17,10 +17,9 @@ import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_RENT
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_EXISTING_USER_ID;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.NOT_HASHED_PASSWORD;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.SAFE_DELETED_USER_ID;
+import static com.github.ipantazi.carsharing.util.TestDataUtil.TRUE_STATUS_FOR_SOFT_DELETED_USER;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.USER_DTO_IGNORING_FIELD;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.createCustomUserDetailsDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestChangePasswordRequestDto;
-import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestRental;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUpdateUserDto;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUser;
 import static com.github.ipantazi.carsharing.util.TestDataUtil.createTestUserRegistrationRequestDto;
@@ -46,10 +45,8 @@ import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
 import com.github.ipantazi.carsharing.exception.InvalidOldPasswordException;
 import com.github.ipantazi.carsharing.exception.RegistrationException;
 import com.github.ipantazi.carsharing.mapper.UserMapper;
-import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.repository.user.UserRepository;
-import com.github.ipantazi.carsharing.security.CustomUserDetails;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -57,7 +54,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
@@ -80,6 +76,8 @@ public class UserServiceTest {
         User user = createTestUser(expectedUserResponseDto);
         UserRegistrationRequestDto userRequestDto = createTestUserRegistrationRequestDto(
                 expectedUserResponseDto);
+
+        when(userRepository.existsUserByEmail(userRequestDto.email())).thenReturn(false);
         when(userMapper.toUserEntity(userRequestDto)).thenReturn(user);
         when(passwordEncoder.encode(userRequestDto.password())).thenReturn(user.getPassword());
         when(userRepository.save(user)).thenReturn(user);
@@ -94,6 +92,8 @@ public class UserServiceTest {
                 expectedUserResponseDto,
                 USER_DTO_IGNORING_FIELD
         );
+
+        verify(userRepository, times(1)).existsUserByEmail(userRequestDto.email());
         verify(userMapper, times(1)).toUserEntity(userRequestDto);
         verify(passwordEncoder, times(1)).encode(userRequestDto.password());
         verify(userRepository, times(1)).save(user);
@@ -105,26 +105,21 @@ public class UserServiceTest {
     @DisplayName("Verify that an exception is throw when an email already exists.")
     public void register_UserEmailAlreadyExists_ThrowsException() {
         //Given
-        UserRegistrationRequestDto userRegistrationRequestDto =
-                createTestUserRegistrationRequestDto(EXISTING_USER_ID);
-        User user = createTestUser(EXISTING_USER_ID);
         UserRegistrationRequestDto userRequestDto = createTestUserRegistrationRequestDto(
                 EXISTING_USER_ID);
-        when(userMapper.toUserEntity(userRequestDto)).thenReturn(user);
-        when(passwordEncoder.encode(userRequestDto.password())).thenReturn(user.getPassword());
-        when(userRepository.save(user)).thenThrow(
-                new DataIntegrityViolationException("duplicate email"));
+
+        when(userRepository.existsUserByEmail(userRequestDto.email())).thenReturn(true);
 
         //When
-        assertThatThrownBy(() -> userService.register(userRegistrationRequestDto))
+        assertThatThrownBy(() -> userService.register(userRequestDto))
                 .isInstanceOf(RegistrationException.class)
-                .hasMessageContaining(userRegistrationRequestDto.email());
+                .hasMessage("User with email %s already exists".formatted(userRequestDto.email()));
         //Then
 
-        verify(userMapper, times(1)).toUserEntity(userRequestDto);
-        verify(passwordEncoder, times(1)).encode(userRequestDto.password());
-        verify(userRepository, times(1)).save(any(User.class));
-        verifyNoMoreInteractions(userRepository, userMapper, passwordEncoder);
+        verify(userRepository, times(1)).existsUserByEmail(userRequestDto.email());
+        verify(userRepository, never()).save(any(User.class));
+        verifyNoMoreInteractions(userRepository);
+        verifyNoInteractions(userMapper, passwordEncoder);
     }
 
     @Test
@@ -424,52 +419,38 @@ public class UserServiceTest {
     }
 
     @Test
-    @DisplayName("Test validateUserExistsOrThrow() method with exists userId.")
-    public void validateUserExistsOrThrow_ExistsUserId_returnsTrue() {
-        // Given
-        Long expectedStatus = 0L;
-        when(userRepository.existsSoftDeletedUserById(EXISTING_USER_ID)).thenReturn(expectedStatus);
-        when(userRepository.existsById(EXISTING_USER_ID)).thenReturn(true);
+    @DisplayName("Test getUserById() method when user exists.")
+    public void getUserById_ExistingUser_ReturnsUser() {
+        //Given
+        User expectedUser = createTestUser(EXISTING_USER_ID);
 
-        // When
-        boolean actual = userService.validateUserExistsOrThrow(EXISTING_USER_ID);
+        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(expectedUser));
 
-        // Then
-        assertThat(actual).isTrue();
-        verify(userRepository, times(1)).existsById(EXISTING_USER_ID);
-        verify(userRepository, times(1)).existsSoftDeletedUserById(EXISTING_USER_ID);
+        //When
+        User actualUser = userService.getUserById(EXISTING_USER_ID);
+
+        //Then
+        assertObjectsAreEqualIgnoringFields(
+                actualUser,
+                expectedUser,
+                USER_DTO_IGNORING_FIELD
+        );
+        verify(userRepository, times(1)).findById(EXISTING_USER_ID);
         verifyNoMoreInteractions(userRepository);
     }
 
     @Test
-    @DisplayName("Test validateUserExistsOrThrow() method when user is soft deleted.")
-    public void validateUserExistsOrThrow_SoftDeletedUser_ThrowsException() {
-        // Given
-        Long expectedStatus = 1L;
-        when(userRepository.existsSoftDeletedUserById(EXISTING_USER_ID)).thenReturn(expectedStatus);
+    @DisplayName("Test getUserById() method when user does not exist.")
+    public void getUserById_NonExistingUser_ThrowsException() {
+        //Given
+        when(userRepository.findById(NOT_EXISTING_USER_ID)).thenReturn(Optional.empty());
 
-        // When & Then
-        assertThatThrownBy(() -> userService.validateUserExistsOrThrow(EXISTING_USER_ID))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("User with id: " + EXISTING_USER_ID + " was previously deleted.");
-        verify(userRepository, times(1)).existsSoftDeletedUserById(EXISTING_USER_ID);
-        verifyNoMoreInteractions(userRepository);
-    }
-
-    @Test
-    @DisplayName("Test validateUserExistsOrThrow() method when user not found")
-    public void validateUserExistsOrThrow_NotExistingUserId_ThrowsException() {
-        // Given
-        Long expectedStatus = 0L;
-        when(userRepository.existsSoftDeletedUserById(EXISTING_USER_ID)).thenReturn(expectedStatus);
-        when(userRepository.existsById(EXISTING_USER_ID)).thenReturn(false);
-
-        // When & Then
-        assertThatThrownBy(() -> userService.validateUserExistsOrThrow(EXISTING_USER_ID))
+        //When & Then
+        assertThatThrownBy(() -> userService.getUserById(NOT_EXISTING_USER_ID))
                 .isInstanceOf(EntityNotFoundException.class)
-                .hasMessage("Can't find user with id: " + EXISTING_USER_ID);
-        verify(userRepository, times(1)).existsSoftDeletedUserById(EXISTING_USER_ID);
-        verify(userRepository, times(1)).existsById(EXISTING_USER_ID);
+                .hasMessage("User not found with id: " + NOT_EXISTING_USER_ID);
+
+        verify(userRepository, times(1)).findById(NOT_EXISTING_USER_ID);
         verifyNoMoreInteractions(userRepository);
     }
 
@@ -478,18 +459,19 @@ public class UserServiceTest {
             Test resolveUserIdForAccess() method when user is not a MANAGER and ignoring
              requestedUserId.
             """)
-    public void resolveUserIdForAccess_NotManager_returnsUserDetailsId() {
+    public void resolveUserIdForAccess_NotManager_returnsAuthUserId() {
         //Given
-        CustomUserDetails userDetails = createCustomUserDetailsDto(
-                createTestUser(EXISTING_USER_ID),
-                User.Role.CUSTOMER
-        );
+        User user = createTestUser(EXISTING_USER_ID);
 
         //When
-        Long actualUserId = userService.resolveUserIdForAccess(userDetails, NOT_EXISTING_USER_ID);
+        Optional<Long> actualUserId = userService.resolveUserIdForAccess(
+                user.getId(),
+                user.getRole(),
+                NOT_EXISTING_USER_ID
+        );
 
         //Then
-        assertThat(actualUserId).isEqualTo(EXISTING_USER_ID);
+        assertThat(actualUserId).isEqualTo(Optional.of(EXISTING_USER_ID));
         verifyNoInteractions(userRepository);
     }
 
@@ -498,20 +480,24 @@ public class UserServiceTest {
             Test resolveUserIdForAccess() method when user is a MANAGER with existing
              requestUserId.
             """)
-    public void resolveUserIdForAccess_ManagerAndExistingRequestUserId_returnsRequestUserId() {
+    public void resolveUserIdForAccess_ManagerAndExistingRequestUserId_returnsRequestedUserId() {
         //Given
-        CustomUserDetails userDetails = createCustomUserDetailsDto(
-                createTestUser(EXISTING_ID_ANOTHER_USER),
-                User.Role.MANAGER
-        );
-        when(userRepository.existsSoftDeletedUserById(EXISTING_USER_ID)).thenReturn(0L);
+        User user = createTestUser(EXISTING_ID_ANOTHER_USER);
+        user.setRole(User.Role.MANAGER);
+
+        when(userRepository.existsSoftDeletedUserById(EXISTING_USER_ID))
+                .thenReturn(FALSE_STATUS_FOR_SOFT_DELETED_USER);
         when(userRepository.existsById(EXISTING_USER_ID)).thenReturn(true);
 
         //When
-        Long actualUserId = userService.resolveUserIdForAccess(userDetails, EXISTING_USER_ID);
+        Optional<Long> actualUserId = userService.resolveUserIdForAccess(
+                user.getId(),
+                user.getRole(),
+                EXISTING_USER_ID
+        );
 
         //Then
-        assertThat(actualUserId).isEqualTo(EXISTING_USER_ID);
+        assertThat(actualUserId).isEqualTo(Optional.of(EXISTING_USER_ID));
         verify(userRepository).existsSoftDeletedUserById(EXISTING_USER_ID);
         verify(userRepository).existsById(EXISTING_USER_ID);
         verifyNoMoreInteractions(userRepository);
@@ -524,16 +510,18 @@ public class UserServiceTest {
             """)
     public void resolveUserIdForAccess_ManagerAndNullRequestUserId_returnsNull() {
         //Given
-        CustomUserDetails userDetails = createCustomUserDetailsDto(
-                createTestUser(EXISTING_ID_ANOTHER_USER),
-                User.Role.MANAGER
-        );
+        User user = createTestUser(EXISTING_ID_ANOTHER_USER);
+        user.setRole(User.Role.MANAGER);
 
         //When
-        Long actualUserId = userService.resolveUserIdForAccess(userDetails, null);
+        Optional<Long> actualUserId = userService.resolveUserIdForAccess(
+                user.getId(),
+                user.getRole(),
+                null
+        );
 
         //Then
-        assertThat(actualUserId).isNull();
+        assertThat(actualUserId).isEmpty();
         verifyNoInteractions(userRepository);
     }
 
@@ -544,20 +532,22 @@ public class UserServiceTest {
             """)
     public void resolveUserIdForAccess_ManagerAndNotExistingRequestUserId_ThrowsException() {
         //Given
-        CustomUserDetails userDetails = createCustomUserDetailsDto(
-                createTestUser(EXISTING_ID_ANOTHER_USER),
-                User.Role.MANAGER
-        );
-        when(userRepository.existsSoftDeletedUserById(NOT_EXISTING_USER_ID)).thenReturn(0L);
+        User user = createTestUser(EXISTING_ID_ANOTHER_USER);
+        user.setRole(User.Role.MANAGER);
+
+        when(userRepository.existsSoftDeletedUserById(NOT_EXISTING_USER_ID))
+                .thenReturn(FALSE_STATUS_FOR_SOFT_DELETED_USER);
         when(userRepository.existsById(NOT_EXISTING_USER_ID)).thenReturn(false);
 
         //When & Then
         assertThatThrownBy(() -> userService.resolveUserIdForAccess(
-                userDetails,
+                user.getId(),
+                user.getRole(),
                 NOT_EXISTING_USER_ID
         ))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessage("Can't find user with id: " + NOT_EXISTING_USER_ID);
+
         verify(userRepository, times(1)).existsSoftDeletedUserById(NOT_EXISTING_USER_ID);
         verify(userRepository, times(1)).existsById(NOT_EXISTING_USER_ID);
         verifyNoMoreInteractions(userRepository);
@@ -567,60 +557,63 @@ public class UserServiceTest {
     @DisplayName("""
             Test resolveUserIdForAccess() method when user is a MANAGER with safe deleted
              requestUserId.
-             """)
+            """)
     public void resolveUserIdForAccess_ManagerAndSafeDeletedRequestUserId_ThrowsException() {
         //Given
-        CustomUserDetails userDetails = createCustomUserDetailsDto(
-                createTestUser(EXISTING_ID_ANOTHER_USER),
-                User.Role.MANAGER
-        );
-        when(userRepository.existsSoftDeletedUserById(SAFE_DELETED_USER_ID)).thenReturn(1L);
+        User user = createTestUser(EXISTING_ID_ANOTHER_USER);
+        user.setRole(User.Role.MANAGER);
+
+        when(userRepository.existsSoftDeletedUserById(SAFE_DELETED_USER_ID))
+                .thenReturn(TRUE_STATUS_FOR_SOFT_DELETED_USER);
 
         //When & Then
         assertThatThrownBy(() -> userService.resolveUserIdForAccess(
-                userDetails,
+                user.getId(),
+                user.getRole(),
                 SAFE_DELETED_USER_ID
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("User with id: %d was previously deleted."
                         .formatted(SAFE_DELETED_USER_ID));
+
         verify(userRepository, times(1)).existsSoftDeletedUserById(SAFE_DELETED_USER_ID);
         verifyNoMoreInteractions(userRepository);
     }
 
     @Test
-    @DisplayName("Test canAccessRental() method when user is a MANAGER.")
+    @DisplayName("""
+    Test canAccessRental() method when user is a MANAGER and ignores requestedUserId.
+            """)
     public void canAccessRental_Manager_returnsTrue() {
         //Given
-        User user = createTestUser(EXISTING_ID_ANOTHER_USER);
-        Rental rental = createTestRental(EXISTING_ID_ANOTHER_USER, ACTUAL_RETURN_DATE);
-
-        when(userRepository.findById(EXISTING_ID_ANOTHER_USER)).thenReturn(Optional.of(user));
+        when(userRepository.existsByIdAndRole(EXISTING_ID_ANOTHER_USER, User.Role.MANAGER))
+                .thenReturn(true);
 
         //When
-        boolean actualResult = userService.canAccessRental(EXISTING_ID_ANOTHER_USER, rental);
+        boolean actualResult = userService.canAccessRental(EXISTING_ID_ANOTHER_USER,
+                EXISTING_USER_ID);
 
         //Then
         assertThat(actualResult).isTrue();
-        verify(userRepository, times(1)).findById(EXISTING_ID_ANOTHER_USER);
+        verify(userRepository, times(1))
+                .existsByIdAndRole(EXISTING_ID_ANOTHER_USER, User.Role.MANAGER);
         verifyNoMoreInteractions(userRepository);
     }
 
     @Test
-    @DisplayName("Test canAccessRental() method when user is a CUSTOMER.")
-    public void canAccessRental_Customer_returnsFalse() {
+    @DisplayName("Test canAccessRental() method when user is a CUSTOMER and has access to rental.")
+    public void canAccessRental_Customer_returnsTrue() {
         //Given
-        User user = createTestUser(EXISTING_USER_ID);
-        Rental rental = createTestRental(EXISTING_USER_ID, ACTUAL_RETURN_DATE);
-
-        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.existsByIdAndRole(EXISTING_USER_ID, User.Role.MANAGER))
+                .thenReturn(false);
 
         //When
-        boolean actualResult = userService.canAccessRental(EXISTING_USER_ID, rental);
+        boolean actualResult = userService.canAccessRental(EXISTING_USER_ID,
+                EXISTING_USER_ID);
 
         //Then
         assertThat(actualResult).isTrue();
-        verify(userRepository, times(1)).findById(EXISTING_USER_ID);
+        verify(userRepository, times(1)).existsByIdAndRole(EXISTING_USER_ID, User.Role.MANAGER);
         verifyNoMoreInteractions(userRepository);
     }
 
@@ -631,34 +624,16 @@ public class UserServiceTest {
             """)
     public void canAccessRental_CustomerAndNoAccess_returnsFalse() {
         //Given
-        User user = createTestUser(EXISTING_USER_ID);
-        Rental rental = createTestRental(EXISTING_ID_ANOTHER_USER, ACTUAL_RETURN_DATE);
-
-        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.existsByIdAndRole(EXISTING_USER_ID, User.Role.MANAGER))
+                .thenReturn(false);
 
         //When
-        boolean actualResult = userService.canAccessRental(EXISTING_USER_ID, rental);
+        boolean actualResult = userService.canAccessRental(EXISTING_USER_ID,
+                EXISTING_ID_ANOTHER_USER);
 
         //Then
         assertThat(actualResult).isFalse();
-        verify(userRepository, times(1)).findById(EXISTING_USER_ID);
-        verifyNoMoreInteractions(userRepository);
-    }
-
-    @Test
-    @DisplayName("Test canAccessRental() method when user is not found.")
-    public void canAccessRental_UserNotFound_ThrowsException() {
-        //Given
-        Rental rental = createTestRental(EXISTING_USER_ID, ACTUAL_RETURN_DATE);
-
-        when(userRepository.findById(NOT_EXISTING_USER_ID)).thenReturn(Optional.empty());
-
-        //When & Then
-        assertThatThrownBy(() -> userService.canAccessRental(NOT_EXISTING_USER_ID, rental))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("User not found with id: " + NOT_EXISTING_USER_ID);
-
-        verify(userRepository, times(1)).findById(NOT_EXISTING_USER_ID);
+        verify(userRepository, times(1)).existsByIdAndRole(EXISTING_USER_ID, User.Role.MANAGER);
         verifyNoMoreInteractions(userRepository);
     }
 

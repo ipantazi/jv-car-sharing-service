@@ -22,10 +22,9 @@ public class CalculatorImpl implements Calculator {
     public BigDecimal calculateBaseRentalCost(BigDecimal dailyFee, Rental rental) {
         validateInputs(dailyFee, rental);
 
-        return dailyFee.multiply(BigDecimal.valueOf(ChronoUnit.DAYS.between(
-                rental.getRentalDate(),
-                rental.getReturnDate()
-        )));
+        return dailyFee.multiply(BigDecimal.valueOf(
+                ChronoUnit.DAYS.between(rental.getRentalDate(), rental.getReturnDate())
+        ));
     }
 
     @Override
@@ -40,15 +39,15 @@ public class CalculatorImpl implements Calculator {
         if (daysLate <= 0) {
             throw new IllegalArgumentException("Rental is not late");
         }
-        return dailyFee
-                .multiply(BigDecimal.valueOf(daysLate))
-                .multiply(LATE_FEE_MULTIPLIER);
+        return dailyFee.multiply(BigDecimal.valueOf(daysLate)).multiply(LATE_FEE_MULTIPLIER);
     }
 
     @Override
     public BigDecimal calculateAmountToPayByType(Rental rental, Payment.Type type) {
-        BigDecimal dailyFee = carRepository.findDailyFeeByCarId(rental.getCarId())
-                .orElseThrow(() -> new IllegalArgumentException("Car not found"));
+        BigDecimal dailyFee = carRepository.findDailyFeeByCarId(rental.getCar().getId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Unable to get daily fee by car Id: " + rental.getCar().getId()
+                ));
 
         if (type.equals(Payment.Type.PAYMENT)) {
             return calculateBaseRentalCost(dailyFee, rental);

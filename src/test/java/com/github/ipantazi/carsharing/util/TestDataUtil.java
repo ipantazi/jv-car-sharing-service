@@ -23,7 +23,6 @@ import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.notification.dto.NewRentalPayload;
 import com.github.ipantazi.carsharing.notification.dto.OverdueRentalPayload;
 import com.github.ipantazi.carsharing.notification.dto.PaymentPayload;
-import com.github.ipantazi.carsharing.security.CustomUserDetails;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
@@ -70,6 +69,7 @@ public class TestDataUtil {
     public static final String EMAIL_DOMAIN = "@example.com";
     public static final String NEW_EMAIL = NEW_USER_ID + EMAIL_DOMAIN;
     public static final String EXISTING_EMAIL = EXISTING_USER_ID + EMAIL_DOMAIN;
+    public static final String NOT_EXISTING_EMAIL = "notExistingEmail" + EMAIL_DOMAIN;
     public static final String NOT_HASHED_PASSWORD = "Test&password1";
     public static final String NOT_EXISTING_NOT_HASHED_PASSWORD = "Not&existingPassword1";
     public static final String NEW_NOT_HASHED_PASSWORD = "New&password1";
@@ -77,6 +77,8 @@ public class TestDataUtil {
             + "NoXTgtSJceOqe";
     public static final String FIRST_NAME = "FirstName";
     public static final String LAST_NAME = "LastName";
+    public static final Long FALSE_STATUS_FOR_SOFT_DELETED_USER = 0L;
+    public static final Long TRUE_STATUS_FOR_SOFT_DELETED_USER = 1L;
 
     public static final int MIN_RENTAL_DAYS = 2;
     public static final int MAX_RENTAL_DAYS = 30;
@@ -173,6 +175,9 @@ public class TestDataUtil {
     public static final String USER_DTO_IGNORING_FIELD = "id";
     public static final String[] RENTAL_DTO_IGNORING_FIELDS = new String[] {
             "id", "userId", "carDto.id"
+    };
+    public static final String[] RENTAL_IGNORING_FIELDS = new String[] {
+            "id", "user", "car"
     };
     public static final String[] PAYMENT_IGNORING_FIELDS = new String[] {"id", "rentalId"};
     public static final String[] NEW_PAYMENT_IGNORING_FIELDS = new String[] {
@@ -389,17 +394,6 @@ public class TestDataUtil {
         );
     }
 
-    public static CustomUserDetails createCustomUserDetailsDto(User user, User.Role role) {
-        return new CustomUserDetails(
-                user.getId(),
-                user.getEmail(),
-                user.getPassword(),
-                user.getAuthorities(),
-                role,
-                user.isEnabled()
-        );
-    }
-
     public static UserChangePasswordDto createTestChangePasswordRequestDto() {
         return new UserChangePasswordDto(
                 NOT_HASHED_PASSWORD,
@@ -511,13 +505,21 @@ public class TestDataUtil {
 
         Rental rental = new Rental();
         rental.setId(rentalResponseDto.getId());
-        rental.setUserId(rentalResponseDto.getUserId());
-        rental.setCarId(rentalResponseDto.getCarDto().getId());
         rental.setRentalDate(LocalDate.parse(rentalResponseDto.getRentalDate()));
         rental.setReturnDate(LocalDate.parse(rentalResponseDto.getReturnDate()));
         if (actualReturnDate != null) {
             rental.setActualReturnDate(LocalDate.parse(actualReturnDate));
         }
+
+        rental.setCar(new Car());
+        rental.getCar().setId(rentalResponseDto.getCarDto().getId());
+        rental.getCar().setModel(rentalResponseDto.getCarDto().getModel());
+        rental.getCar().setBrand(rentalResponseDto.getCarDto().getBrand());
+        rental.getCar().setType(Car.Type.valueOfType(rentalResponseDto.getCarDto().getType()));
+        rental.getCar().setInventory(rentalResponseDto.getCarDto().getInventory());
+        rental.getCar().setDailyFee(rentalResponseDto.getCarDto().getDailyFee());
+
+        rental.setUser(createTestUser(rentalResponseDto.getUserId()));
         return rental;
     }
 
@@ -526,32 +528,40 @@ public class TestDataUtil {
 
         Rental rental = new Rental();
         rental.setId(rentalDetailedDto.getId());
-        rental.setUserId(rentalDetailedDto.getUserId());
-        rental.setCarId(rentalDetailedDto.getCarDto().getId());
         rental.setRentalDate(LocalDate.parse(rentalDetailedDto.getRentalDate()));
         rental.setReturnDate(LocalDate.parse(rentalDetailedDto.getReturnDate()));
         if (actualReturnDate != null) {
             rental.setActualReturnDate(LocalDate.parse(actualReturnDate));
         }
+
+        rental.setCar(new Car());
+        rental.getCar().setId(rentalDetailedDto.getCarDto().getId());
+        rental.getCar().setModel(rentalDetailedDto.getCarDto().getModel());
+        rental.getCar().setBrand(rentalDetailedDto.getCarDto().getBrand());
+        rental.getCar().setType(Car.Type.valueOfType(rentalDetailedDto.getCarDto().getType()));
+        rental.getCar().setInventory(rentalDetailedDto.getCarDto().getInventory());
+        rental.getCar().setDailyFee(rentalDetailedDto.getCarDto().getDailyFee());
+
+        rental.setUser(createTestUser(rentalDetailedDto.getUserId()));
         return rental;
     }
 
     public static Rental createTestRental(Long id, LocalDate actualReturnDate) {
         Rental rental = new Rental();
         rental.setId(id);
-        rental.setUserId(id);
-        rental.setCarId(id);
         rental.setRentalDate(RENTAL_DATE);
         rental.setReturnDate(RETURN_DATE);
         rental.setActualReturnDate(actualReturnDate);
+        rental.setCar(createTestCar(id));
+        rental.setUser(createTestUser(id));
         return rental;
     }
 
     public static Rental createTestOverdueRental(Long id) {
         Rental rental = new Rental();
         rental.setId(id);
-        rental.setUserId(id);
-        rental.setCarId(id);
+        rental.setUser(createTestUser(id));
+        rental.setCar(createTestCar(id));
         rental.setRentalDate(RENTAL_DATE);
         rental.setReturnDate(RETURN_DATE_BEFORE_FIXED_DATE);
         return rental;
@@ -731,6 +741,18 @@ public class TestDataUtil {
                 CAR_BRAND,
                 CAR_TYPE,
                 RETURN_DATE_BEFORE_FIXED_DATE,
+                DAYS_OVERDUE
+        );
+    }
+
+    public static OverdueRentalPayload createTestOverdueRentalPayload(Rental rental) {
+        return new OverdueRentalPayload(
+                rental.getId(),
+                rental.getUser().getEmail(),
+                rental.getCar().getModel(),
+                rental.getCar().getBrand(),
+                rental.getCar().getType().toString(),
+                rental.getReturnDate(),
                 DAYS_OVERDUE
         );
     }

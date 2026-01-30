@@ -10,12 +10,10 @@ import com.github.ipantazi.carsharing.exception.EntityNotFoundException;
 import com.github.ipantazi.carsharing.exception.InvalidOldPasswordException;
 import com.github.ipantazi.carsharing.exception.RegistrationException;
 import com.github.ipantazi.carsharing.mapper.UserMapper;
-import com.github.ipantazi.carsharing.model.Rental;
 import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.repository.user.UserRepository;
-import com.github.ipantazi.carsharing.security.CustomUserDetails;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,14 +29,13 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponseDto register(UserRegistrationRequestDto requestDto)
             throws RegistrationException {
-        try {
-            User user = userMapper.toUserEntity(requestDto);
-            user.setPassword(passwordEncoder.encode(requestDto.password()));
-            return userMapper.toUserDto(userRepository.save(user));
-        } catch (DataIntegrityViolationException ex) {
+        if (userRepository.existsUserByEmail(requestDto.email())) {
             throw new RegistrationException(
-                    "Can't register user with this email: %s".formatted(requestDto.email()), ex);
+                    "User with email %s already exists".formatted(requestDto.email()));
         }
+        User user = userMapper.toUserEntity(requestDto);
+        user.setPassword(passwordEncoder.encode(requestDto.password()));
+        return userMapper.toUserDto(userRepository.save(user));
     }
 
     @Override
@@ -88,35 +85,25 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public boolean validateUserExistsOrThrow(Long userId) {
-        if (userRepository.existsSoftDeletedUserById(userId) == 1L) {
-            throw new IllegalArgumentException("User with id: %d was previously deleted."
-                    .formatted(userId));
-        }
-        if (!userRepository.existsById(userId)) {
-            throw new EntityNotFoundException("Can't find user with id: " + userId);
-        }
-        return true;
-    }
-
-    @Override
-    public Long resolveUserIdForAccess(CustomUserDetails userDetails, Long requestedUserId) {
-        boolean isManager = userDetails.getRole().equals(User.Role.MANAGER);
+    public Optional<Long> resolveUserIdForAccess(Long authUserId,
+                                                 User.Role userRole,
+                                                 Long requestedUserId) {
+        boolean isManager = userRole == User.Role.MANAGER;
 
         if (isManager && requestedUserId != null) {
             validateUserExistsOrThrow(requestedUserId);
-            return requestedUserId;
+            return Optional.of(requestedUserId);
         } else if (!isManager) {
-            return userDetails.getId();
+            return Optional.of(authUserId);
         } else {
-            return null;
+            return Optional.empty();
         }
     }
 
     @Override
-    public boolean canAccessRental(Long userId, Rental rental) {
-        Long rentalUserId = rental.getUserId();
-        return isManager(userId) || userId.equals(rentalUserId);
+    public boolean canAccessRental(Long userId, Long rentalOwnerId) {
+        boolean isManager = userRepository.existsByIdAndRole(userId, User.Role.MANAGER);
+        return isManager || userId.equals(rentalOwnerId);
     }
 
     @Override
@@ -126,11 +113,8 @@ public class UserServiceImpl implements UserService {
                         + rentalId));
     }
 
-    private boolean isManager(Long userId) {
-        return getUserById(userId).getRole().equals(User.Role.MANAGER);
-    }
-
-    private User getUserById(Long userId) {
+    @Override
+    public User getUserById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() ->
                         new EntityNotFoundException("User not found with id: " + userId)
@@ -142,5 +126,15 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() ->
                         new EntityNotFoundException("User not found with id: " + userId)
                 );
+    }
+
+    private void validateUserExistsOrThrow(Long userId) {
+        if (userRepository.existsSoftDeletedUserById(userId) == 1L) {
+            throw new IllegalArgumentException("User with id: %d was previously deleted."
+                    .formatted(userId));
+        }
+        if (!userRepository.existsById(userId)) {
+            throw new EntityNotFoundException("Can't find user with id: " + userId);
+        }
     }
 }

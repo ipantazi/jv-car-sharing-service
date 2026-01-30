@@ -14,7 +14,7 @@ public class TelegramRateLimiterConfig {
         RateLimiterConfig config = RateLimiterConfig.custom()
                 .limitForPeriod(1) // 1 message
                 .limitRefreshPeriod(Duration.ofSeconds(1))
-                .timeoutDuration(Duration.ofSeconds(2))
+                .timeoutDuration(Duration.ofSeconds(30))
                 .build();
 
         return RateLimiter.of("telegram-rate-limiter", config);

@@ -2,7 +2,7 @@ package com.github.ipantazi.carsharing.controller;
 
 import com.github.ipantazi.carsharing.dto.payment.PaymentRequestDto;
 import com.github.ipantazi.carsharing.dto.payment.PaymentResponseDto;
-import com.github.ipantazi.carsharing.security.CustomUserDetails;
+import com.github.ipantazi.carsharing.model.User;
 import com.github.ipantazi.carsharing.service.payment.PaymentService;
 import com.github.ipantazi.carsharing.service.user.UserService;
 import com.stripe.exception.StripeException;
@@ -44,11 +44,15 @@ public class PaymentController {
             Authentication authentication,
             @RequestParam(value = "user_id", required = false)
             @Positive(message = "User ID must be a positive number")
-            Long userId,
+            Long requestedUserId,
             @ParameterObject Pageable pageable
     ) {
-        CustomUserDetails user = (CustomUserDetails) authentication.getPrincipal();
-        Long actualUserId = userService.resolveUserIdForAccess(user, userId);
+        User user = (User) authentication.getPrincipal();
+        Long actualUserId = userService.resolveUserIdForAccess(
+                user.getId(),
+                user.getRole(),
+                requestedUserId
+        ).orElse(null);
         return paymentService.getPayments(actualUserId, pageable);
     }
 
@@ -62,7 +66,7 @@ public class PaymentController {
             UriComponentsBuilder uriBuilder
     ) throws StripeException {
 
-        CustomUserDetails user = (CustomUserDetails) authentication.getPrincipal();
+        User user = (User) authentication.getPrincipal();
         return paymentService.createPaymentSession(user.getId(), paymentRequestDto, uriBuilder);
     }
 
@@ -93,7 +97,7 @@ public class PaymentController {
             @RequestBody @Valid PaymentRequestDto paymentRequestDto,
             UriComponentsBuilder uriBuilder
     ) throws StripeException {
-        CustomUserDetails user = (CustomUserDetails) authentication.getPrincipal();
+        User user = (User) authentication.getPrincipal();
         return paymentService.renewPaymentSession(user.getId(), paymentRequestDto, uriBuilder);
     }
 }

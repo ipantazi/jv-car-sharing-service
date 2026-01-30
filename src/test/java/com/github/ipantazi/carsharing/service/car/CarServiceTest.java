@@ -405,7 +405,7 @@ public class CarServiceTest {
 
     @Test
     @DisplayName("Test getByIds() method")
-    void getByIds_ReturnsCarDtos() {
+    void getByIds_GivenCarCatalog_ReturnsCarDtos() {
         // Given
         CarDto expectedCarDto = createTestCarDto(EXISTING_CAR_ID);
         Car car = createTestCar(expectedCarDto);
@@ -427,5 +427,21 @@ public class CarServiceTest {
         verify(carRepository, times(1)).findAllById(carIds);
         verify(carMapper, times(1)).toCarDto(car);
         verifyNoMoreInteractions(carRepository, carMapper);
+    }
+
+    @Test
+    @DisplayName("")
+    void getByIds_GivenEmptyCarCatalog_ReturnsEmptyList() {
+        // Given
+        Set<Long> carIds = Set.of(NOT_EXISTING_CAR_ID);
+        when(carRepository.findAllById(carIds)).thenReturn(Collections.emptyList());
+
+        // When
+        List<CarDto> actualCarDtos = carService.getByIds(carIds);
+
+        // Then
+        assertThat(actualCarDtos).isEmpty();
+        verify(carRepository, times(1)).findAllById(carIds);
+        verifyNoMoreInteractions(carRepository);
     }
 }
